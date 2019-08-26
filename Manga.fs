@@ -9,11 +9,20 @@ type TitleExtractor = HtmlDocument -> string
 type ChapterUrlsExtractor = HtmlDocument -> string seq
 type ImageExtractor = HtmlDocument -> string seq
 
+type Direction =
+    | Horizontal
+    | Vertical
+    override this.ToString() =
+        match this with
+        | Horizontal -> "horizontal"
+        | Vertical -> "vertical"
+
 type MangaSource = {
     Url: string
     TitleExtractor: TitleExtractor
     ChapterUrlsExtractor: ChapterUrlsExtractor
     ImageExtractor: ImageExtractor
+    Direction: Direction
 }
 
 let dataHome =
@@ -46,4 +55,9 @@ let downloadManga (manga: MangaSource): unit =
     printfn "%A" chapterUrls
     let dir = Path.Combine(mangaData, title)
     Directory.CreateDirectory(dir) |> ignore
-    Seq.iteri (fun i u -> downloadChapter dir manga.ImageExtractor (i + 1) u) chapterUrls
+    File.WriteAllText(Path.Combine(dir, "direction"), manga.Direction.ToString())
+    File.WriteAllText(Path.Combine(dir, "source"), manga.Url)
+    Seq.iteri (fun i u ->
+        downloadChapter dir manga.ImageExtractor (i + 1) u
+        File.AppendAllText(Path.Combine(dir, "chapters"), sprintf "%s\n" u)
+    ) chapterUrls
