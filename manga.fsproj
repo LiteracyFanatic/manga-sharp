@@ -6,7 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Manga.fs" />
     <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fsharp.Data" Version="3.1.1" />
   </ItemGroup>
 
 </Project>
