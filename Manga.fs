@@ -33,20 +33,19 @@ let dataHome =
         Environment.SpecialFolderOption.Create
     )
 let mangaData = Path.Combine(dataHome, "manga")
-printfn "%s" mangaData
 Directory.CreateDirectory(mangaData) |> ignore
 
 let downloadImage (dir: string) (url: string) =
     let name = Path.GetFileName(Uri(url).LocalPath)
-    printfn "Image = %s" name
     use wc = new WebClient()
     wc.DownloadFile(url, Path.Combine(dir, name))
 
-let downloadChapter (dir: string) (title: string) (chapterTitleExtractor: ChapterTitleExtractor) (imageExtractor: ImageExtractor) (url: string) =
+let downloadChapter (dir: string) (title: string) (chapterTitleExtractor: ChapterTitleExtractor) (imageExtractor: ImageExtractor) (chapterCount: int) (n: int) (url: string) =
     let html = HtmlDocument.Load(url)
     let chapterTitle = chapterTitleExtractor html
     let folder = Path.Combine(dir, chapterTitle)
     Directory.CreateDirectory(folder) |> ignore
+    printfn "Downloading %s Chapter %s (%i/%i)..." title chapterTitle n chapterCount
     html
     |> imageExtractor
     |> Seq.iter (downloadImage folder)
@@ -54,9 +53,7 @@ let downloadChapter (dir: string) (title: string) (chapterTitleExtractor: Chapte
 let downloadManga (manga: MangaSource): unit =
     let index = HtmlDocument.Load(manga.Url)
     let title = manga.TitleExtractor index
-    printfn "%s" title
     let chapterUrls = manga.ChapterUrlsExtractor index
-    printfn "%A" chapterUrls
     let dir = Path.Combine(mangaData, title)
     Directory.CreateDirectory(dir) |> ignore
     File.WriteAllText(Path.Combine(dir, "direction"), manga.Direction.ToString())
@@ -76,6 +73,7 @@ let downloadManga (manga: MangaSource): unit =
         chapterUrls
         |> Seq.filter newChapters.Contains
         |> Seq.iteri (fun i u ->
-            downloadChapter dir title manga.ChapterTitleExtractor manga.ImageExtractor u
+            downloadChapter dir title manga.ChapterTitleExtractor manga.ImageExtractor (newChapters.Count) (i + 1) u
             File.AppendAllText(Path.Combine(dir, "chapters"), sprintf "%s\n" u)
         )
+        printfn "Finished downloading %s." title
