@@ -23,6 +23,7 @@ let extractChapterTitle (html: HtmlDocument) =
     |> HtmlNode.innerText
     |> r.Match
     |> fun m -> m.Groups.[1].Value
+
 let extractImageUrls (html: HtmlDocument) =
     html.CssSelect("#vungdoc img")
     |> Seq.map (HtmlNode.attributeValue "src")

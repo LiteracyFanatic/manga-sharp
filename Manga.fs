@@ -61,8 +61,21 @@ let downloadManga (manga: MangaSource): unit =
     Directory.CreateDirectory(dir) |> ignore
     File.WriteAllText(Path.Combine(dir, "direction"), manga.Direction.ToString())
     File.WriteAllText(Path.Combine(dir, "source"), manga.Url)
-    chapterUrls
-    |> Seq.iter (fun u ->
-        downloadChapter dir title manga.ChapterTitleExtractor manga.ImageExtractor u
-        File.AppendAllText(Path.Combine(dir, "chapters"), sprintf "%s\n" u)
-    )
+    let existingChapters =
+        if File.Exists(Path.Combine(dir, "chapters")) then
+            File.ReadAllLines (Path.Combine(dir, "chapters"))
+            |> Set.ofArray
+        else
+            Set.empty
+    if not (Set.isSubset existingChapters (Set.ofSeq chapterUrls)) then
+        printfn "WARNING: There are previously downloaded chapters from URLs not listed by the current source. This may indicate a change in page structure."
+    let newChapters = Set.difference (Set.ofSeq chapterUrls) existingChapters
+    if Set.isEmpty newChapters then
+        printfn "No new chapters."
+    else
+        chapterUrls
+        |> Seq.filter newChapters.Contains
+        |> Seq.iteri (fun i u ->
+            downloadChapter dir title manga.ChapterTitleExtractor manga.ImageExtractor u
+            File.AppendAllText(Path.Combine(dir, "chapters"), sprintf "%s\n" u)
+        )
