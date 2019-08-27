@@ -7,6 +7,7 @@ open FSharp.Data
 
 type TitleExtractor = HtmlDocument -> string
 type ChapterUrlsExtractor = HtmlDocument -> string seq
+type ChapterTitleExtractor = HtmlDocument -> string
 type ImageExtractor = HtmlDocument -> string seq
 
 type Direction =
@@ -21,6 +22,7 @@ type MangaSource = {
     Url: string
     TitleExtractor: TitleExtractor
     ChapterUrlsExtractor: ChapterUrlsExtractor
+    ChapterTitleExtractor: ChapterTitleExtractor
     ImageExtractor: ImageExtractor
     Direction: Direction
 }
@@ -40,10 +42,12 @@ let downloadImage (dir: string) (url: string) =
     use wc = new WebClient()
     wc.DownloadFile(url, Path.Combine(dir, name))
 
-let downloadChapter (dir: string) (imageExtractor: ImageExtractor) (n: int) (url: string) =
-    let folder = Path.Combine(dir, string n)
+let downloadChapter (dir: string) (title: string) (chapterTitleExtractor: ChapterTitleExtractor) (imageExtractor: ImageExtractor) (url: string) =
+    let html = HtmlDocument.Load(url)
+    let chapterTitle = chapterTitleExtractor html
+    let folder = Path.Combine(dir, chapterTitle)
     Directory.CreateDirectory(folder) |> ignore
-    HtmlDocument.Load(url)
+    html
     |> imageExtractor
     |> Seq.iter (downloadImage folder)
 
@@ -57,7 +61,8 @@ let downloadManga (manga: MangaSource): unit =
     Directory.CreateDirectory(dir) |> ignore
     File.WriteAllText(Path.Combine(dir, "direction"), manga.Direction.ToString())
     File.WriteAllText(Path.Combine(dir, "source"), manga.Url)
-    Seq.iteri (fun i u ->
-        downloadChapter dir manga.ImageExtractor (i + 1) u
+    chapterUrls
+    |> Seq.iter (fun u ->
+        downloadChapter dir title manga.ChapterTitleExtractor manga.ImageExtractor u
         File.AppendAllText(Path.Combine(dir, "chapters"), sprintf "%s\n" u)
-    ) chapterUrls
+    )
