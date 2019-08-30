@@ -37,7 +37,7 @@ let main argv =
         ChapterUrlsExtractor = extractChapterUrls
         ChapterTitleExtractor = extractChapterTitle
         ImageExtractor = extractImageUrls
-        Direction = Horizontal
+        Direction = Vertical
     }
     downloadManga mangaSource
     0 // return an integer exit code
