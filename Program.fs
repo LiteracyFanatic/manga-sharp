@@ -1,6 +1,7 @@
 ﻿open System.Text.RegularExpressions
 open FSharp.Data
-open Manga
+open MangaSharp
+open MangaSharp.Manga
 
 // Sample implementation for https://manganelo.com/manga/
 let extractTitle (html: HtmlDocument) =
@@ -31,13 +32,17 @@ let extractImageUrls (html: HtmlDocument) =
 [<EntryPoint>]
 let main argv =
     let indexUrl = argv.[0]
-    let mangaSource = {
-        Url = indexUrl
+    let provider = {
+        Pattern = Regex("https://manganelo\.com/manga/.*")
         TitleExtractor = extractTitle
         ChapterUrlsExtractor = extractChapterUrls
         ChapterTitleExtractor = extractChapterTitle
         ImageExtractor = extractImageUrls
+    }
+    let mangaSource = {
+        Url = indexUrl
         Direction = Vertical
+        Provider = provider
     }
     downloadManga mangaSource
     0 // return an integer exit code

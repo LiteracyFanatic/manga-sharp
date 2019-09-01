@@ -1,32 +1,10 @@
-module Manga
+module MangaSharp.Manga
 
 open System
 open System.IO
 open System.Net
 open FSharp.Data
 open ImageMagick
-
-type TitleExtractor = HtmlDocument -> string
-type ChapterUrlsExtractor = HtmlDocument -> string seq
-type ChapterTitleExtractor = HtmlDocument -> string
-type ImageExtractor = HtmlDocument -> string seq
-
-type Direction =
-    | Horizontal
-    | Vertical
-    override this.ToString() =
-        match this with
-        | Horizontal -> "horizontal"
-        | Vertical -> "vertical"
-
-type MangaSource = {
-    Url: string
-    TitleExtractor: TitleExtractor
-    ChapterUrlsExtractor: ChapterUrlsExtractor
-    ChapterTitleExtractor: ChapterTitleExtractor
-    ImageExtractor: ImageExtractor
-    Direction: Direction
-}
 
 let dataHome =
     Environment.GetFolderPath(
@@ -60,7 +38,7 @@ let append (top: MagickImage) (bottom: MagickImage) =
     parts.Add(top)
     parts.Add(bottom)
     new MagickImage(parts.AppendVertically())
-
+    
 let extend (targetHeight) (image: MagickImage) =
     let newImage = new MagickImage(image.Clone())
     newImage.Extent(image.Width, targetHeight, Gravity.North, MagickColors.Black)
@@ -104,20 +82,20 @@ let downloadImage (dir: string) (url: string) =
     use wc = new WebClient()
     wc.DownloadFile(url, Path.Combine(dir, name))
 
-let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterCount: int) (n: int) (url: string) =
+let downloadChapter (dir: string) (title: string) (manga: Manga) (chapterCount: int) (n: int) (url: string) =
     let html = HtmlDocument.Load(url)
-    let chapterTitle = manga.ChapterTitleExtractor html
+    let chapterTitle = manga.Provider.ChapterTitleExtractor html
     printfn "Downloading %s Chapter %s (%i/%i)..." title chapterTitle n chapterCount
     match manga.Direction with
     | Horizontal ->
         let folder = Path.Combine(dir, chapterTitle)
         Directory.CreateDirectory(folder) |> ignore
         html
-        |> manga.ImageExtractor
+        |> manga.Provider.ImageExtractor
         |> Seq.iter (downloadImage folder)
     | Vertical ->
         html
-        |> manga.ImageExtractor
+        |> manga.Provider.ImageExtractor
         |> Seq.map (fun url ->
             let stream = Http.RequestStream(url).ResponseStream
             let image = new MagickImage(stream)
@@ -127,10 +105,10 @@ let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterC
         |> resizeImages
         |> toPdf (Path.Combine(dir, sprintf "%s.pdf" chapterTitle))
 
-let downloadManga (manga: MangaSource): unit =
+let downloadManga (manga: Manga): unit =
     let index = HtmlDocument.Load(manga.Url)
-    let title = manga.TitleExtractor index
-    let chapterUrls = manga.ChapterUrlsExtractor index
+    let title = manga.Provider.TitleExtractor index
+    let chapterUrls = manga.Provider.ChapterUrlsExtractor index
     let dir = Path.Combine(mangaData, title)
     Directory.CreateDirectory(dir) |> ignore
     File.WriteAllText(Path.Combine(dir, "direction"), manga.Direction.ToString())
