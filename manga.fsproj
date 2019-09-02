@@ -7,8 +7,8 @@
 
   <ItemGroup>
     <Compile Include="Types.fs" />
-    <Compile Include="Manga.fs" />
     <Compile Include="Provider.fs" />
+    <Compile Include="Manga.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

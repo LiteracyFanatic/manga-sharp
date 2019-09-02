@@ -5,6 +5,7 @@ open System.IO
 open System.Net
 open FSharp.Data
 open ImageMagick
+open MangaSharp
 
 let dataHome =
     Environment.GetFolderPath(
@@ -82,7 +83,7 @@ let downloadImage (dir: string) (url: string) =
     use wc = new WebClient()
     wc.DownloadFile(url, Path.Combine(dir, name))
 
-let downloadChapter (dir: string) (title: string) (manga: Manga) (chapterCount: int) (n: int) (url: string) =
+let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterCount: int) (n: int) (url: string) =
     let html = HtmlDocument.Load(url)
     let chapterTitle = manga.Provider.ChapterTitleExtractor html
     printfn "Downloading %s Chapter %s (%i/%i)..." title chapterTitle n chapterCount
@@ -105,7 +106,7 @@ let downloadChapter (dir: string) (title: string) (manga: Manga) (chapterCount: 
         |> resizeImages
         |> toPdf (Path.Combine(dir, sprintf "%s.pdf" chapterTitle))
 
-let download (manga: Manga): unit =
+let download (manga: MangaSource): unit =
     let index = HtmlDocument.Load(manga.Url)
     let title = manga.Provider.TitleExtractor index
     let chapterUrls = manga.Provider.ChapterUrlsExtractor index
@@ -132,3 +133,38 @@ let download (manga: Manga): unit =
             File.AppendAllText(Path.Combine(dir, "chapters"), sprintf "%s\n" u)
         )
         printfn "Finished downloading %s." title
+
+let storedManga =
+    Directory.EnumerateDirectories(mangaData)
+    |> Seq.map (fun d -> 
+        let indexUrl = File.ReadAllText(Path.Combine(d, "source"))
+        let direction =
+            match File.ReadAllText(Path.Combine(d, "direction")) with
+            | "horizontal" -> Horizontal
+            | "vertical" -> Vertical
+        let bookmarkPath = Path.Combine(d, "bookmark")
+        let bookmark =
+            if File.Exists(bookmarkPath) then
+                File.ReadAllText(bookmarkPath) |> Some
+            else
+                None
+        let source = {
+            Url = indexUrl
+            Direction = direction
+            Provider = Provider.tryFromTable indexUrl direction |> Option.get
+        }
+        {
+            Title = Path.GetFileName(d)
+            NumberOfChapters =
+                match direction with
+                | Horizontal ->
+                    Directory.GetDirectories(d).Length
+                | Vertical ->
+                    Directory.GetFiles(d)
+                    |> Array.filter(fun f -> FileInfo(f).Extension = "pdf")
+                    |> Array.length
+            Bookmark = bookmark                
+            Source = source
+        }
+    )
+    |> Seq.sortBy (fun m -> m.Title)

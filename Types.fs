@@ -25,8 +25,15 @@ type Provider = {
     ImageExtractor: ImageExtractor
 }
 
-type Manga = {
+type MangaSource = {
     Url: string
     Direction: Direction
     Provider: Provider
+}
+
+type StoredManga = {
+    Title: string
+    NumberOfChapters: int
+    Bookmark: string option
+    Source: MangaSource
 }
