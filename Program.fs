@@ -1,6 +1,4 @@
 ﻿open MangaSharp
-open MangaSharp.Manga
-open MangaSharp.Provider
 
 [<EntryPoint>]
 let main argv =
@@ -14,5 +12,5 @@ let main argv =
         Direction = direction
         Provider = Provider.tryFromTable indexUrl direction |> Option.get
     }
-    downloadManga manga
+    Manga.download manga
     0 // return an integer exit code

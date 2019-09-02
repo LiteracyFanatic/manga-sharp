@@ -105,7 +105,7 @@ let downloadChapter (dir: string) (title: string) (manga: Manga) (chapterCount: 
         |> resizeImages
         |> toPdf (Path.Combine(dir, sprintf "%s.pdf" chapterTitle))
 
-let downloadManga (manga: Manga): unit =
+let download (manga: Manga): unit =
     let index = HtmlDocument.Load(manga.Url)
     let title = manga.Provider.TitleExtractor index
     let chapterUrls = manga.Provider.ChapterUrlsExtractor index
