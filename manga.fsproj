@@ -19,14 +19,7 @@
   <ItemGroup>
     <PackageReference Include="argu" Version="5.5.0" />
     <PackageReference Include="Fsharp.Data" Version="3.1.1" />
-    <PackageReference Include="Magick.NET-Q8-x64" Version="7.14.3" />
     <PackageReference Include="Suave.Experimental" Version="2.5.5" />
   </ItemGroup>
-
-  <!-- <ItemGroup>
-    <Content Include="viewer/*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup> -->
 
 </Project>

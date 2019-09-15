@@ -4,71 +4,7 @@ open System
 open System.IO
 open System.Net
 open FSharp.Data
-open ImageMagick
 open MangaSharp
-
-let normalizeWidth (images: MagickImage list) =
-    let minWidth =
-        images
-        |> List.map (fun image -> image.Width)
-        |> List.min
-    images
-    |> List.filter (fun image -> image.Width > minWidth)
-    |> List.iter (fun image -> image.Resize(minWidth, 0))
-    images
-
-let split (targetHeight: int) (image: MagickImage) =
-    let top = new MagickImage(image.Clone())
-    top.Crop(top.Width, targetHeight)
-    top.RePage()
-    let bottom = new MagickImage(image.Clone())
-    bottom.Crop(MagickGeometry(0, targetHeight, bottom.Width, bottom.Height - targetHeight))
-    bottom.RePage()
-    top, bottom
-
-let append (top: MagickImage) (bottom: MagickImage) =
-    use parts = new MagickImageCollection()
-    parts.Add(top)
-    parts.Add(bottom)
-    new MagickImage(parts.AppendVertically())
-    
-let extend (targetHeight) (image: MagickImage) =
-    let newImage = new MagickImage(image.Clone())
-    newImage.Extent(image.Width, targetHeight, Gravity.North, MagickColors.Black)
-    newImage
-
-let rec normalizeHeight (targetHeight: int) (images: MagickImage list) =
-    match images with
-    | [] -> []
-    | [h] ->
-        if h.Height = targetHeight then
-            [h]
-        else if h.Height < targetHeight then
-            [extend targetHeight h]
-        else
-            let top, bottom = split targetHeight h
-            top :: normalizeHeight targetHeight [bottom]
-    | h :: t ->
-        if h.Height = targetHeight then
-            h :: normalizeHeight targetHeight t
-        else if h.Height < targetHeight then
-            normalizeHeight targetHeight (append h t.Head :: t.Tail)
-        else
-            let top, bottom = split targetHeight h
-            top :: normalizeHeight targetHeight (bottom :: t)
-
-let resizeImages images =
-    printfn "Resizing images..."
-    images
-    |> normalizeWidth
-    |> normalizeHeight 5000
-
-let toPdf (path: string) (images: MagickImage list) =
-    printfn "Converting to PDF..."
-    use imageCollection = new MagickImageCollection()
-    for image in images do imageCollection.Add(image)
-    imageCollection.Write(path)
-    for image in images do image.Dispose()
 
 let downloadImage (dir: string) (url: string) (n: int) =
     let ext = Path.GetExtension(Uri(url).LocalPath)
@@ -83,21 +19,7 @@ let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterC
     let imageUrls = manga.Provider.ImageExtractor html
     let folder = Path.Combine(dir, chapterTitle)
     Directory.CreateDirectory(folder) |> ignore
-    Directory.CreateDirectory(Path.Combine(dir, "pdfs")) |> ignore
-    match manga.Direction with
-    | Horizontal ->
-        Seq.iteri (fun i url -> downloadImage folder url (i + 1)) imageUrls
-    | Vertical ->
-        Seq.iteri (fun i url -> downloadImage folder url (i + 1)) imageUrls
-        imageUrls
-        |> Seq.map (fun url ->
-            let stream = Http.RequestStream(url).ResponseStream
-            let image = new MagickImage(stream)
-            image
-        )
-        |> Seq.toList
-        |> resizeImages
-        |> toPdf (Path.Combine(dir, "pdfs", sprintf "%s.pdf" chapterTitle))
+    Seq.iteri (fun i url -> downloadImage folder url (i + 1)) imageUrls
 
 let download (manga: MangaSource): unit =
     let index = HtmlDocument.Load(manga.Url)
@@ -132,7 +54,6 @@ let fromDir (dir: string) =
     let chapters =
         Directory.GetDirectories(dir)
         |> Array.toList
-        |> List.filter (fun d -> DirectoryInfo(d).Name <> "pdfs")
         |> List.map Chapter.fromDir
         |> List.sortBy (fun c -> float c.Title)
     let indexUrl = File.ReadAllText(Path.Combine(dir, "source")).Trim()
