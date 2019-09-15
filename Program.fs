@@ -57,7 +57,7 @@ let main argv =
             let manga = {
                 Url = indexUrl
                 Direction = direction
-                Provider = Provider.tryFromTable indexUrl direction |> Option.get
+                Provider = Provider.tryFromTable indexUrl |> Option.get
             }
             Manga.download manga
         | Update updateArgs ->

@@ -151,7 +151,7 @@ let storedManga =
         let source = {
             Url = indexUrl
             Direction = direction
-            Provider = Provider.tryFromTable indexUrl direction |> Option.get
+            Provider = Provider.tryFromTable indexUrl |> Option.get
         }
         {
             Title = Path.GetFileName(d)

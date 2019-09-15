@@ -53,5 +53,5 @@ let providers = [
     }
 ]
 
-let tryFromTable (url: string) (direction: Direction) =
+let tryFromTable (url: string) =
     List.tryFind (fun p -> p.Pattern.IsMatch(url)) providers
