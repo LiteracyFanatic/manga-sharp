@@ -7,14 +7,6 @@ open FSharp.Data
 open ImageMagick
 open MangaSharp
 
-let dataHome =
-    Environment.GetFolderPath(
-        Environment.SpecialFolder.LocalApplicationData,
-        Environment.SpecialFolderOption.Create
-    )
-let mangaData = Path.Combine(dataHome, "manga")
-Directory.CreateDirectory(mangaData) |> ignore
-
 let normalizeWidth (images: MagickImage list) =
     let minWidth =
         images
@@ -78,8 +70,9 @@ let toPdf (path: string) (images: MagickImage list) =
     imageCollection.Write(path)
     for image in images do image.Dispose()
 
-let downloadImage (dir: string) (url: string) =
-    let name = Path.GetFileName(Uri(url).LocalPath)
+let downloadImage (dir: string) (url: string) (n: int) =
+    let ext = Path.GetExtension(Uri(url).LocalPath)
+    let name = sprintf "%03i%s" n ext
     use wc = new WebClient()
     wc.DownloadFile(url, Path.Combine(dir, name))
 
@@ -87,16 +80,16 @@ let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterC
     let html = HtmlDocument.Load(url)
     let chapterTitle = manga.Provider.ChapterTitleExtractor html
     printfn "Downloading %s Chapter %s (%i/%i)..." title chapterTitle n chapterCount
+    let imageUrls = manga.Provider.ImageExtractor html
+    let folder = Path.Combine(dir, chapterTitle)
+    Directory.CreateDirectory(folder) |> ignore
+    Directory.CreateDirectory(Path.Combine(dir, "pdfs")) |> ignore
     match manga.Direction with
     | Horizontal ->
-        let folder = Path.Combine(dir, chapterTitle)
-        Directory.CreateDirectory(folder) |> ignore
-        html
-        |> manga.Provider.ImageExtractor
-        |> Seq.iter (downloadImage folder)
+        Seq.iteri (fun i url -> downloadImage folder url (i + 1)) imageUrls
     | Vertical ->
-        html
-        |> manga.Provider.ImageExtractor
+        Seq.iteri (fun i url -> downloadImage folder url (i + 1)) imageUrls
+        imageUrls
         |> Seq.map (fun url ->
             let stream = Http.RequestStream(url).ResponseStream
             let image = new MagickImage(stream)
@@ -104,7 +97,7 @@ let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterC
         )
         |> Seq.toList
         |> resizeImages
-        |> toPdf (Path.Combine(dir, sprintf "%s.pdf" chapterTitle))
+        |> toPdf (Path.Combine(dir, "pdfs", sprintf "%s.pdf" chapterTitle))
 
 let download (manga: MangaSource): unit =
     let index = HtmlDocument.Load(manga.Url)
@@ -134,37 +127,34 @@ let download (manga: MangaSource): unit =
         )
         printfn "Finished downloading %s." title
 
-let storedManga =
+let fromDir (dir: string) =
+    let title = Path.GetFileName(dir)
+    let chapters =
+        Directory.GetDirectories(dir)
+        |> Array.toList
+        |> List.filter (fun d -> DirectoryInfo(d).Name <> "pdfs")
+        |> List.map Chapter.fromDir
+        |> List.sortBy (fun c -> float c.Title)
+    let indexUrl = File.ReadAllText(Path.Combine(dir, "source")).Trim()
+    let directionPath = Path.Combine(dir, "direction")
+    let direction =
+        match File.ReadAllText(directionPath).Trim() with
+        | "horizontal" -> Horizontal
+        | "vertical" -> Vertical
+        | _ -> failwithf "%s does not contain a valid direction." directionPath
+    let source = {
+        Url = indexUrl
+        Direction = direction
+        Provider = Provider.tryFromTable indexUrl |> Option.get
+    }
+    {
+        Title = title
+        Chapters = chapters
+        Bookmark = Bookmark.tryReadBookmark title
+        Source = source
+    }
+
+let getStoredManga () =
     Directory.EnumerateDirectories(mangaData)
-    |> Seq.map (fun d -> 
-        let indexUrl = File.ReadAllText(Path.Combine(d, "source"))
-        let direction =
-            match File.ReadAllText(Path.Combine(d, "direction")) with
-            | "horizontal" -> Horizontal
-            | "vertical" -> Vertical
-        let bookmarkPath = Path.Combine(d, "bookmark")
-        let bookmark =
-            if File.Exists(bookmarkPath) then
-                File.ReadAllText(bookmarkPath) |> Some
-            else
-                None
-        let source = {
-            Url = indexUrl
-            Direction = direction
-            Provider = Provider.tryFromTable indexUrl |> Option.get
-        }
-        {
-            Title = Path.GetFileName(d)
-            NumberOfChapters =
-                match direction with
-                | Horizontal ->
-                    Directory.GetDirectories(d).Length
-                | Vertical ->
-                    Directory.GetFiles(d)
-                    |> Array.filter(fun f -> FileInfo(f).Extension = "pdf")
-                    |> Array.length
-            Bookmark = bookmark                
-            Source = source
-        }
-    )
+    |> Seq.map fromDir
     |> Seq.sortBy (fun m -> m.Title)

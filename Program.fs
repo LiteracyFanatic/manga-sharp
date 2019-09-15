@@ -1,4 +1,5 @@
-﻿open MangaSharp
+﻿open System.IO
+open MangaSharp
 open Argu
 
 type DownloadArgs =
@@ -20,11 +21,17 @@ type UpdateArgs =
             | All -> "update all manga."
 
 type ReadArgs =
-    | [<Mandatory; MainCommand; ExactlyOnce; Last>] Manga of string
+    | Title of title: string
+    | Last
+    | Port of int
+    | No_Open
     interface IArgParserTemplate with
         member this.Usage =
             match this with
-            | Manga _ -> "the manga to read."
+            | Title _ -> "the manga to read."
+            | Last -> "use the most recently read manga."
+            | Port _ -> "the port to run the server on."
+            | No_Open _ -> "don't automatically open the default browser."
 
 type Args =
     | [<CliPrefix(CliPrefix.None)>] Download of ParseResults<DownloadArgs>
@@ -62,21 +69,33 @@ let main argv =
             Manga.download manga
         | Update updateArgs ->
             if updateArgs.Contains(All) then
-                Seq.iter (fun m -> Manga.download m.Source) Manga.storedManga
+                Seq.iter (fun m -> Manga.download m.Source) (Manga.getStoredManga ())
             else
-                let manga = updateArgs.GetResult(UpdateArgs.Manga)
+                let manga = updateArgs.GetResult(Manga)
                 let { Source = source } =
-                    Seq.find (fun m -> m.Title = manga) Manga.storedManga
+                    Seq.find (fun m -> m.Title = manga) (Manga.getStoredManga ())
                 Manga.download source
         | Read readArgs ->
             ()
         | Ls ->
             Seq.iter (fun m ->
+                let bookmarkText =
+                    m.Bookmark
+                    |> Option.map (fun b ->
+                        let chapterText = (Bookmark.getChapter b).Title
+                        let pageText =
+                            Bookmark.tryGetPage b
+                            |> Option.map (fun p -> sprintf " Page %s" p.Name)
+                            |> Option.defaultValue ""
+                        sprintf "Chapter %s%s" chapterText pageText
+                    )
+                    |> Option.defaultValue "None"
                 printfn "%s %i %s"
                     m.Title
-                    m.NumberOfChapters
-                    (Option.defaultValue "None" m.Bookmark)
-            ) Manga.storedManga
+                    m.Chapters.Length
+                    bookmarkText
+
+            ) (Manga.getStoredManga ())
         | Version ->
             ()
     with

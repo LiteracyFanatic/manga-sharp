@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,6 +7,9 @@
 
   <ItemGroup>
     <Compile Include="Types.fs" />
+    <Compile Include="Page.fs" />
+    <Compile Include="Chapter.fs" />
+    <Compile Include="Bookmark.fs" />
     <Compile Include="Provider.fs" />
     <Compile Include="Manga.fs" />
     <Compile Include="Program.fs" />

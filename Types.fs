@@ -1,6 +1,8 @@
 [<AutoOpen>]
 module MangaSharp.Types
 
+open System
+open System.IO
 open System.Text.RegularExpressions
 open FSharp.Data
 
@@ -31,9 +33,31 @@ type MangaSource = {
     Provider: Provider
 }
 
+type Page = {
+    Name: string
+    File: string
+}
+
+type Chapter = {
+    Title: string
+    Pages: Page list
+}
+
+type Bookmark =
+    | HorizontalBookmark of Chapter * Page
+    | VerticalBookmark of Chapter
+
 type StoredManga = {
     Title: string
-    NumberOfChapters: int
-    Bookmark: string option
+    Chapters: Chapter list
+    Bookmark: Bookmark option
     Source: MangaSource
 }
+
+let dataHome =
+    Environment.GetFolderPath(
+        Environment.SpecialFolder.LocalApplicationData,
+        Environment.SpecialFolderOption.Create
+    )
+let mangaData = Path.Combine(dataHome, "manga")
+Directory.CreateDirectory(mangaData) |> ignore
