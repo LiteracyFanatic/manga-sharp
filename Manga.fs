@@ -158,3 +158,25 @@ let getStoredManga () =
     Directory.EnumerateDirectories(mangaData)
     |> Seq.map fromDir
     |> Seq.sortBy (fun m -> m.Title)
+
+let firstPage (manga: StoredManga) =
+    let chapter = manga.Chapters.Head
+    sprintf "/manga/%s/%s" manga.Title chapter.Title
+
+let tryPreviousChapter (manga: StoredManga) (chapter: Chapter) =
+    let i = List.findIndex ((=) chapter) manga.Chapters
+    List.tryItem (i - 1) manga.Chapters
+
+let tryNextChapter (manga: StoredManga) (chapter: Chapter) =
+    let i = List.findIndex ((=) chapter) manga.Chapters
+    List.tryItem (i + 1) manga.Chapters
+
+let tryFromTitle (title: string) =
+    getStoredManga ()
+    |> Seq.tryFind (fun m -> m.Title = title)
+
+let tryLast () =
+    let lastMangaPath = Path.Combine(mangaData, "last-manga")
+    if File.Exists(lastMangaPath) then
+        tryFromTitle (File.ReadAllText(lastMangaPath).Trim())
+    else None

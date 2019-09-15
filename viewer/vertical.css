@@ -1,0 +1,13 @@
+body {
+    background: black;
+}
+
+img {
+    margin: auto;
+    display: block;
+}
+
+#select-container {
+    position: fixed;
+    margin: 10px;
+}

@@ -1,0 +1,22 @@
+html {
+    overflow: hidden;
+}
+
+body {
+    background: black;
+}
+
+img {
+    height: 100vh;
+    margin: auto;
+    display: none;
+}
+
+.active {
+    display: block;
+}
+
+#select-container {
+    position: fixed;
+    margin: 10px;
+}

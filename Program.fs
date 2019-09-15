@@ -76,10 +76,26 @@ let main argv =
                     Seq.find (fun m -> m.Title = manga) (Manga.getStoredManga ())
                 Manga.download source
         | Read readArgs ->
-            ()
+            let port = readArgs.TryGetResult(Port)
+            let openInBrowser = not (readArgs.Contains(No_Open))
+            if readArgs.Contains(Last) then
+                if readArgs.Contains(Title) then
+                    printfn "Cannot specity --last and a manga title at the same time."
+                else
+                    match Manga.tryLast () with
+                    | Some m -> Server.read port openInBrowser (Some m)
+                    | None -> printfn "Could not read %s." (Path.Combine(mangaData, "last-manga"))
+            else
+                match readArgs.TryGetResult(Title) with
+                | Some t ->
+                    match Manga.tryFromTitle t with
+                    | Some m -> Server.read port openInBrowser (Some m)
+                    | None -> printfn "Couldn't find a manga titled %s." t
+                | None -> Server.read port openInBrowser None
         | Ls ->
-            Seq.iter (fun m ->
-                let bookmarkText =
+            Manga.getStoredManga ()
+            |> Seq.iter (fun m ->
+                let bookmarkText = 
                     m.Bookmark
                     |> Option.map (fun b ->
                         let chapterText = (Bookmark.getChapter b).Title
@@ -90,12 +106,12 @@ let main argv =
                         sprintf "Chapter %s%s" chapterText pageText
                     )
                     |> Option.defaultValue "None"
-                printfn "%s %i %s"
+                printfn "%s,%A,%i,%s"
                     m.Title
+                    m.Source.Direction
                     m.Chapters.Length
                     bookmarkText
-
-            ) (Manga.getStoredManga ())
+            )
         | Version ->
             ()
     with

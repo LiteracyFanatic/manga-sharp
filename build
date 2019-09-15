@@ -1,0 +1,6 @@
+#!/bin/bash
+dotnet build
+rm -f dist/*
+mkdir -p dist
+cp viewer/* dist
+cp node_modules/bulma/css/bulma.min.css dist

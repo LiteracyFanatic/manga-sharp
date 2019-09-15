@@ -1,3 +1,5 @@
 obj
 bin
 .ionide
+node_modules
+dist
