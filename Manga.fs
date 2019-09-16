@@ -6,11 +6,13 @@ open System.Net
 open FSharp.Data
 open MangaSharp
 
-let downloadImage (dir: string) (url: string) (n: int) =
-    let ext = Path.GetExtension(Uri(url).LocalPath)
-    let name = sprintf "%03i%s" n ext
-    use wc = new WebClient()
-    wc.DownloadFile(url, Path.Combine(dir, name))
+let downloadImageAsync (dir: string) (url: string) (n: int) =
+    async {
+        let ext = Path.GetExtension(Uri(url).LocalPath)
+        let name = sprintf "%03i%s" n ext
+        use wc = new WebClient()
+        return! wc.AsyncDownloadFile(Uri(url), Path.Combine(dir, name))
+    }
 
 let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterCount: int) (n: int) (url: string) =
     let html = HtmlDocument.Load(url)
@@ -19,7 +21,11 @@ let downloadChapter (dir: string) (title: string) (manga: MangaSource) (chapterC
     let imageUrls = manga.Provider.ImageExtractor html
     let folder = Path.Combine(dir, chapterTitle)
     Directory.CreateDirectory(folder) |> ignore
-    Seq.iteri (fun i url -> downloadImage folder url (i + 1)) imageUrls
+    imageUrls
+    |> Seq.mapi (fun i url -> downloadImageAsync folder url (i + 1))
+    |> Async.Sequential
+    |> Async.Ignore
+    |> Async.RunSynchronously
 
 let download (manga: MangaSource): unit =
     let index = HtmlDocument.Load(manga.Url)
