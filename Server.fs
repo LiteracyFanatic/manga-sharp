@@ -48,7 +48,7 @@ let homeButton =
         ]
     ]
 
-let index (storedManga: StoredManga seq) =
+let index (storedManga: StoredManga list) =
     html [] [
         head [] [
             meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
@@ -158,7 +158,7 @@ let app (port: int) =
             Files.browseHome
             pathScan "/manga/%s" (Files.browseFile mangaData)
             pathScan "/manga/%s/%s" (fun (m, c) ->
-                let manga = Seq.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
+                let manga = List.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
                 let chapter: Chapter = List.find (fun ch -> ch.Title = c) manga.Chapters
                 mangaPage port manga chapter
             )
@@ -173,7 +173,7 @@ let app (port: int) =
             pathScan "/manga/%s/bookmark" (fun m ->
                 request (fun r ->
                     let body = Text.Encoding.UTF8.GetString(r.rawForm)
-                    let manga = Seq.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
+                    let manga = List.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
                     let bookmarkPath = Path.Combine(mangaData, manga.Title, "bookmark")
                     File.WriteAllText(bookmarkPath, sprintf "%s\n" body)
                     Response.response HTTP_204 [||]

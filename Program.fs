@@ -68,13 +68,19 @@ let main argv =
             }
             Manga.download manga
         | Update updateArgs ->
-            if updateArgs.Contains(All) then
-                Seq.iter (fun m -> Manga.download m.Source) (Manga.getStoredManga ())
-            else
-                let manga = updateArgs.GetResult(Manga)
-                let { Source = source } =
-                    Seq.find (fun m -> m.Title = manga) (Manga.getStoredManga ())
-                Manga.download source
+            printfn "Checking for updates..."
+            let updated =
+                if updateArgs.Contains(All) then
+                    Manga.getStoredManga ()
+                    |> List.map (fun m -> Manga.update m.Source)
+                    |> List.contains true
+                else
+                    let manga = updateArgs.GetResult(Manga)
+                    let { Source = source } =
+                        List.find (fun m -> m.Title = manga) (Manga.getStoredManga ())
+                    Manga.update source
+            if not updated then
+                printfn "No updates were found."
         | Read readArgs ->
             let port = readArgs.TryGetResult(Port)
             let openInBrowser = not (readArgs.Contains(No_Open))
@@ -94,7 +100,7 @@ let main argv =
                 | None -> Server.read port openInBrowser None
         | Ls ->
             Manga.getStoredManga ()
-            |> Seq.iter (fun m ->
+            |> List.iter (fun m ->
                 let bookmarkText = 
                     m.Bookmark
                     |> Option.map (fun b ->
