@@ -167,7 +167,7 @@ let app (port: int) =
             path "/manga/last-manga" >=> request (fun r ->
                 let body = Text.Encoding.UTF8.GetString(r.rawForm)
                 let lastMangaPath = Path.Combine(mangaData, "last-manga")
-                File.WriteAllText(lastMangaPath, body)
+                File.WriteAllText(lastMangaPath, sprintf "%s\n" body)
                 Response.response HTTP_204 [||]
             )
             pathScan "/manga/%s/bookmark" (fun m ->
@@ -175,7 +175,7 @@ let app (port: int) =
                     let body = Text.Encoding.UTF8.GetString(r.rawForm)
                     let manga = Seq.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
                     let bookmarkPath = Path.Combine(mangaData, manga.Title, "bookmark")
-                    File.WriteAllText(bookmarkPath, body)
+                    File.WriteAllText(bookmarkPath, sprintf "%s\n" body)
                     Response.response HTTP_204 [||]
             ))
         ]

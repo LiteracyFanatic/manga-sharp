@@ -33,8 +33,8 @@ let download (manga: MangaSource): unit =
     let chapterUrls = manga.Provider.ChapterUrlsExtractor index
     let dir = Path.Combine(mangaData, title)
     Directory.CreateDirectory(dir) |> ignore
-    File.WriteAllText(Path.Combine(dir, "direction"), manga.Direction.ToString())
-    File.WriteAllText(Path.Combine(dir, "source"), manga.Url)
+    File.WriteAllText(Path.Combine(dir, "direction"), sprintf "%s\n" (manga.Direction.ToString()))
+    File.WriteAllText(Path.Combine(dir, "source"), sprintf "%s\n" manga.Url)
     let existingChapters =
         if File.Exists(Path.Combine(dir, "chapters")) then
             File.ReadAllLines (Path.Combine(dir, "chapters"))
