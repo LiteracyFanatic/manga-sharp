@@ -6,11 +6,6 @@ open System.IO
 open System.Text.RegularExpressions
 open FSharp.Data
 
-type TitleExtractor = HtmlDocument -> string
-type ChapterUrlsExtractor = HtmlDocument -> string seq
-type ChapterTitleExtractor = HtmlDocument -> string
-type ImageExtractor = HtmlDocument -> string seq
-
 type Direction =
     | Horizontal
     | Vertical
@@ -21,10 +16,10 @@ type Direction =
 
 type Provider = {
     Pattern: Regex
-    TitleExtractor: TitleExtractor
-    ChapterUrlsExtractor: ChapterUrlsExtractor
-    ChapterTitleExtractor: ChapterTitleExtractor
-    ImageExtractor: ImageExtractor
+    TitleExtractor: HtmlDocument -> string
+    ChapterUrlsExtractor: HtmlDocument -> string seq
+    ChapterTitleExtractor: HtmlDocument -> string
+    ImageExtractor: HtmlDocument -> string seq
 }
 
 type MangaSource = {
