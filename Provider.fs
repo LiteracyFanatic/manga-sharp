@@ -4,27 +4,27 @@ open System.Text.RegularExpressions
 open FSharp.Data
 open MangaSharp
 
-let extractTitle (cssQuery: string) (regex: Regex) = fun (html: HtmlDocument) ->
+let extractTitle (cssQuery: string) (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
     html.CssSelect(cssQuery)
     |> Seq.head
     |> HtmlNode.directInnerText
     |> regex.Match
     |> fun m -> m.Groups.[1].Value.Trim()
 
-let extractChapterUrls (cssQuery: string) = fun (html: HtmlDocument) ->
+let extractChapterUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
     html.CssSelect(cssQuery)
     |> Seq.rev
     |> Seq.map (HtmlNode.attributeValue "href")
     |> Seq.distinct
 
-let extractChapterTitle (cssQuery: string) (regex: Regex) = fun (html: HtmlDocument) ->
+let extractChapterTitle (cssQuery: string) (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
     html.CssSelect(cssQuery)
     |> Seq.head
     |> HtmlNode.directInnerText
     |> regex.Match
     |> fun m -> m.Groups.[1].Value
 
-let extractImageUrls (cssQuery: string) = fun (html: HtmlDocument) ->
+let extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
     html.CssSelect(cssQuery)
     |> Seq.map (HtmlNode.attributeValue "src")
 

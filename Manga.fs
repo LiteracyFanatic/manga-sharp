@@ -19,15 +19,15 @@ type ChapterInfo = {
 let getMangaInfo (manga: MangaSource) =
     let index = HtmlDocument.Load(manga.Url)
     {
-        Title =  manga.Provider.TitleExtractor index
-        ChapterUrls = manga.Provider.ChapterUrlsExtractor index
+        Title =  manga.Provider.TitleExtractor manga.Url index
+        ChapterUrls = manga.Provider.ChapterUrlsExtractor manga.Url index
     }
 
 let getChapterInfo (manga: MangaSource) (url: string) =
     let chapterPage = HtmlDocument.Load(url)
     {
-        Title = manga.Provider.ChapterTitleExtractor chapterPage
-        ImageUrls = manga.Provider.ImageExtractor chapterPage
+        Title = manga.Provider.ChapterTitleExtractor url chapterPage
+        ImageUrls = manga.Provider.ImageExtractor url chapterPage
     }
 
 let downloadFileAsync (path: string) (url: string) =
