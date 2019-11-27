@@ -79,7 +79,7 @@ let private providers = [
         ChapterTitleExtractor = urlMatch (Regex("chapter_(.*)"))
         ImageExtractor = extractImageUrls "#vungdoc img"
     }
-    
+
     {
         Pattern = Regex("https://manytoon\.com/comic/.*")
         TitleExtractor = cssAndRegex ".post-title h3" (Regex("(.*)"))
@@ -87,7 +87,7 @@ let private providers = [
         ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
         ImageExtractor = extractImageUrls ".wp-manga-chapter-img"
     }
-    
+
     {
         Pattern = Regex("https://manhwa18\.com/.*")
         TitleExtractor = fun (url: string) (html: HtmlDocument) ->

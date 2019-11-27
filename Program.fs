@@ -91,7 +91,7 @@ let main argv =
             let openInBrowser = not (readArgs.Contains(No_Open))
             if readArgs.Contains(Last) then
                 if readArgs.Contains(Title) then
-                    printfn "Cannot specity --last and a manga title at the same time."
+                    printfn "Cannot specify --last and a manga title at the same time."
                 else
                     match Manga.tryLast () with
                     | Some m -> Server.read port openInBrowser (Some m)
