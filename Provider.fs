@@ -87,6 +87,29 @@ let private providers = [
         ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
         ImageExtractor = extractImageUrls ".wp-manga-chapter-img"
     }
+    
+    {
+        Pattern = Regex("https://manhwa18\.com/.*")
+        TitleExtractor = fun (url: string) (html: HtmlDocument) ->
+            let textInfo = CultureInfo("en-US", false).TextInfo
+            querySelector html ".manga-info h1"
+            |> Option.map (fun node ->
+                node
+                |> HtmlNode.directInnerText
+                |> String.toLowerInvariant
+                |> textInfo.ToTitleCase
+            )
+        ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
+            querySelectorAll html ".chapter"
+            |> Option.map (fun chapters ->
+                chapters
+                |> Seq.rev
+                |> Seq.map (HtmlNode.attributeValue "href" >> resolveUrl url)
+                |> Seq.distinct
+            )
+        ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
+        ImageExtractor = extractImageUrls ".chapter-img"
+    }
 ]
 
 let tryFromTable (url: string) =
