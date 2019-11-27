@@ -1,18 +1,34 @@
 module MangaSharp.Page
 
 open MangaSharp
+open MangaSharp.Util
 open System.IO
 
-let fromChapterTitle (mangaTitle: string) (chapterTitle: string) =
-    Directory.GetFiles(Path.Combine(mangaData, mangaTitle, chapterTitle))
-    |> Array.map (fun f ->
-        {
-            Name = Path.GetFileNameWithoutExtension(FileInfo(f).Name)
-            File = f
-        }
-    )
-    |> Array.toList
+let private fromFileName (file: string) =
+    {
+        Name = Path.GetFileNameWithoutExtension(file)
+        File = file
+    }
 
-let fromTitle (mangaTitle: string) (chapterTitle: string) (pageTitle: string) =
+let fromDir (dir: string) =
+    let pages =
+        Directory.GetFiles(dir)
+        |> Array.map (fun f -> FileInfo(f).Name)
+        |> Array.sort
+        |> Array.map fromFileName
+        |> Array.toList
+    match NonEmptyList.tryCreate pages with
+    | Some pages ->
+        Some pages
+    | None ->
+        printfn "%s contains no pages." dir
+        None
+
+let private fromChapterTitle (mangaTitle: string) (chapterTitle: string) =
+    let dir = Path.Combine(mangaData, mangaTitle, chapterTitle)
+    fromDir dir
+
+let tryFromTitle (mangaTitle: string) (chapterTitle: string) (pageTitle: string) =
     fromChapterTitle mangaTitle chapterTitle
-    |> List.find (fun p -> p.Name = pageTitle)
+    |> Option.map (NonEmptyList.tryFind (fun p -> p.Name = pageTitle))
+    |> Option.flatten

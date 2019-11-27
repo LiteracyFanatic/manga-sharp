@@ -5,6 +5,7 @@ open System
 open System.IO
 open System.Text.RegularExpressions
 open FSharp.Data
+open MangaSharp.Util
 
 type Direction =
     | Horizontal
@@ -16,10 +17,10 @@ type Direction =
 
 type Provider = {
     Pattern: Regex
-    TitleExtractor: string -> HtmlDocument -> string
-    ChapterUrlsExtractor: string -> HtmlDocument -> string seq
-    ChapterTitleExtractor: string -> HtmlDocument -> string
-    ImageExtractor: string -> HtmlDocument -> string seq
+    TitleExtractor: string -> HtmlDocument -> string option
+    ChapterUrlsExtractor: string -> HtmlDocument -> string seq option
+    ChapterTitleExtractor: string -> HtmlDocument -> string option
+    ImageExtractor: string -> HtmlDocument -> string seq option
 }
 
 type MangaSource = {
@@ -35,7 +36,7 @@ type Page = {
 
 type Chapter = {
     Title: string
-    Pages: Page list
+    Pages: NonEmptyList<Page>
 }
 
 type Bookmark =
@@ -44,7 +45,7 @@ type Bookmark =
 
 type StoredManga = {
     Title: string
-    Chapters: Chapter list
+    Chapters: NonEmptyList<Chapter>
     Bookmark: Bookmark option
     Source: MangaSource
 }

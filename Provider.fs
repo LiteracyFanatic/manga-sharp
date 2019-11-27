@@ -1,68 +1,98 @@
 module MangaSharp.Provider
 
+open System
 open System.Text.RegularExpressions
+open System.Globalization
 open FSharp.Data
 open MangaSharp
 
-let extractTitle (cssQuery: string) (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
-    html.CssSelect(cssQuery)
-    |> Seq.head
-    |> HtmlNode.directInnerText
-    |> regex.Match
-    |> fun m -> m.Groups.[1].Value.Trim()
+let private querySelector (html: HtmlDocument) (cssQuery: string) =
+    match html.CssSelect(cssQuery) with
+    | [] ->
+        printfn "%s did not match any elements." cssQuery
+        None
+    | [node] ->
+        Some node
+    | _ ->
+        printfn "%s matched multiple elements." cssQuery
+        None
 
-let extractChapterUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
-    html.CssSelect(cssQuery)
-    |> Seq.rev
-    |> Seq.map (HtmlNode.attributeValue "href")
-    |> Seq.distinct
+let private querySelectorAll (html: HtmlDocument) (cssQuery: string) =
+    match html.CssSelect(cssQuery) with
+    | [] ->
+        printfn "%s didn't match any elements." cssQuery
+        None
+    | elements ->
+        Some elements
 
-let extractChapterTitle (cssQuery: string) (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
-    html.CssSelect(cssQuery)
-    |> Seq.head
-    |> HtmlNode.directInnerText
-    |> regex.Match
-    |> fun m -> m.Groups.[1].Value
+let private regexMatch (regex: Regex) (input: string) =
+    let m = regex.Match(input)
+    if m.Success then
+        let groups = seq m.Groups
+        match Seq.tryItem 1 groups with
+        | Some group ->
+            match group.Value.Trim() with
+            | "" ->
+                printfn "%A returned an empty match." regex
+                None
+            | value ->
+                Some value
+        | None ->
+            printfn "%A capture group 1 did not exist." regex
+            None
+    else
+        printfn "%A did not match." regex
+        None
 
-let extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
-    html.CssSelect(cssQuery)
-    |> Seq.map (HtmlNode.attributeValue "src")
+let private urlMatch (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
+    regexMatch regex url
 
-let chapterNumberRegex = Regex("Chapter (\d+(\.\d+)?)")
+let private cssAndRegex (cssQuery: string) (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
+    querySelector html cssQuery
+    |> Option.map (fun node ->
+        let text = HtmlNode.directInnerText node
+        regexMatch regex text
+    )
+    |> Option.flatten
 
-let providers = [
-    {
-        Pattern = Regex("https://mangazuki\.me/manga/.*")
-        TitleExtractor = extractTitle ".post-title h1" (Regex("(.*)"))
-        ChapterUrlsExtractor = extractChapterUrls ".wp-manga-chapter a"
-        ChapterTitleExtractor = extractChapterTitle ".breadcrumb li.active" chapterNumberRegex
-        ImageExtractor = extractImageUrls ".wp-manga-chapter-img"
-    }
-    
-    {
-        Pattern = Regex("https://mangazuki\.me/.*")
-        TitleExtractor = extractTitle "title" (Regex("Read (.*) Manga.*"))
-        ChapterUrlsExtractor = extractChapterUrls ".wp-manga-chapter a"
-        ChapterTitleExtractor = extractChapterTitle ".breadcrumb li.active" chapterNumberRegex
-        ImageExtractor = extractImageUrls ".wp-manga-chapter-img"
-    }
+let private resolveUrl (baseUrl: string) (url: string) =
+    Uri(Uri(baseUrl), url).AbsoluteUri
 
+let private extractChapterUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
+    querySelectorAll html cssQuery
+    |> Option.map (fun chapters ->
+        chapters
+        |> Seq.rev
+        |> Seq.map (HtmlNode.attributeValue "href" >> resolveUrl url)
+        |> Seq.distinct
+    )
+
+let private extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
+    querySelectorAll html cssQuery
+    |> Option.map (Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url))
+
+let private providers = [
     {
         Pattern = Regex("https://manganelo\.com/manga/.*")
-        TitleExtractor = extractTitle "title" (Regex("Read (.*) Manga Online For Free"))
+        TitleExtractor = cssAndRegex "title" (Regex("Read (.*) Manga Online For Free"))
         ChapterUrlsExtractor = extractChapterUrls ".chapter-list .row a"
-        ChapterTitleExtractor = extractChapterTitle "title" chapterNumberRegex
+        ChapterTitleExtractor = urlMatch (Regex("chapter_(.*)"))
         ImageExtractor = extractImageUrls "#vungdoc img"
     }
     
     {
         Pattern = Regex("https://manytoon\.com/comic/.*")
-        TitleExtractor = extractTitle ".post-title h3" (Regex("(.*)"))
+        TitleExtractor = cssAndRegex ".post-title h3" (Regex("(.*)"))
         ChapterUrlsExtractor = extractChapterUrls ".wp-manga-chapter a"
-        ChapterTitleExtractor = extractChapterTitle ".single-chapter-select option[selected]" chapterNumberRegex
-        ImageExtractor = extractImageUrls ".reading-content img"
+        ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
+        ImageExtractor = extractImageUrls ".wp-manga-chapter-img"
     }
 ]
 
 let tryFromTable (url: string) =
-    List.tryFind (fun p -> p.Pattern.IsMatch(url)) providers
+    match List.tryFind (fun p -> p.Pattern.IsMatch(url)) providers with
+    | Some provider ->
+        Some provider
+    | None ->
+        printfn "Could not find a provider that matched %s." url
+        None

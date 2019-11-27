@@ -1,6 +1,7 @@
 ﻿open System.IO
 open MangaSharp
 open Argu
+open MangaSharp.Util
 
 type DownloadArgs =
     | [<Mandatory; MainCommand; ExactlyOnce; Last>] Url of string
@@ -61,12 +62,16 @@ let main argv =
         | Download downloadArgs ->
             let indexUrl = downloadArgs.GetResult(Url)
             let direction = downloadArgs.GetResult(Direction)
-            let manga = {
-                Url = indexUrl
-                Direction = direction
-                Provider = Provider.tryFromTable indexUrl |> Option.get
-            }
-            Manga.download manga
+            match Provider.tryFromTable indexUrl with
+            | Some provider ->
+                let manga = {
+                    Url = indexUrl
+                    Direction = direction
+                    Provider = provider
+                }
+                Manga.download manga
+            | None ->
+                ()
         | Update updateArgs ->
             printfn "Checking for updates..."
             let updated =
@@ -90,13 +95,13 @@ let main argv =
                 else
                     match Manga.tryLast () with
                     | Some m -> Server.read port openInBrowser (Some m)
-                    | None -> printfn "Could not read %s." (Path.Combine(mangaData, "last-manga"))
+                    | None -> ()
             else
                 match readArgs.TryGetResult(Title) with
                 | Some t ->
                     match Manga.tryFromTitle t with
                     | Some m -> Server.read port openInBrowser (Some m)
-                    | None -> printfn "Couldn't find a manga titled %s." t
+                    | None -> ()
                 | None -> Server.read port openInBrowser None
         | Ls ->
             Manga.getStoredManga ()
@@ -115,7 +120,7 @@ let main argv =
                 printfn "%s,%A,%i,%s"
                     m.Title
                     m.Source.Direction
-                    m.Chapters.Length
+                    (NonEmptyList.length m.Chapters)
                     bookmarkText
             )
         | Version ->

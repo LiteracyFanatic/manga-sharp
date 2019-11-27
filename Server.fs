@@ -1,6 +1,7 @@
 module MangaSharp.Server
 
 open MangaSharp
+open MangaSharp.Util
 open System
 open System.IO
 open System.Net
@@ -12,7 +13,7 @@ open Suave.Successful
 open Suave.Operators
 open Suave.FunctionalViewEngine
 
-let chapterSelect (manga: StoredManga) (chapter: Chapter) =
+let private chapterSelect (manga: StoredManga) (chapter: Chapter) =
     div [ attr "class" "control" ] [
         div [ attr "class" "select"] [
             select [ attr "id" "chapter-select" ] [
@@ -25,7 +26,7 @@ let chapterSelect (manga: StoredManga) (chapter: Chapter) =
         ]
     ]
 
-let pageSelect (chapter: Chapter) =
+let private pageSelect (chapter: Chapter) =
     div [ attr "class" "control" ] [
         div [ attr "class" "select"] [
             select [ attr "id" "page-select" ] [
@@ -37,7 +38,7 @@ let pageSelect (chapter: Chapter) =
         ]
     ]
 
-let homeButton =
+let private homeButton =
     div [ attr "class" "control" ] [
         a [ attr "class" "button"; attr "href" "/" ] [
             span [ attr "class" "icon" ] [
@@ -48,7 +49,7 @@ let homeButton =
         ]
     ]
 
-let index (storedManga: StoredManga list) =
+let private index (storedManga: StoredManga list) =
     html [] [
         head [] [
             meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
@@ -76,14 +77,14 @@ let index (storedManga: StoredManga list) =
                     let selectedChapter =
                         match m.Bookmark with
                         | Some b -> Bookmark.getChapter b
-                        | None -> m.Chapters.[0]
+                        | None -> NonEmptyList.head m.Chapters
 
                     tr [] [
                         yield td [] [ a [ attr "href" link ] [ encodedText m.Title ] ]
                         yield td [] [ encodedText (m.Source.Direction.ToString()) ]
                         yield td [] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
-                        let n = 1 + List.findIndex ((=) selectedChapter) m.Chapters
-                        yield td [] [ encodedText (sprintf "%i/%i" n m.Chapters.Length) ]
+                        let n = 1 + NonEmptyList.findIndex ((=) selectedChapter) m.Chapters
+                        yield td [] [ encodedText (sprintf "%i/%i" n (NonEmptyList.length m.Chapters)) ]
                     ]
             ]
         ]
@@ -91,17 +92,17 @@ let index (storedManga: StoredManga list) =
     |> renderHtmlDocument
     |> OK
 
-let mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
+let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
     let getHash (page: Page) =
         match manga.Source.Direction with
         | Horizontal -> sprintf "#%s" page.Name
         | Vertical -> ""
     let previousLink =
         Manga.tryPreviousChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" manga.Title c.Title (getHash (List.last c.Pages)))
+        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" manga.Title c.Title (getHash (NonEmptyList.last c.Pages)))
     let nextLink =
         Manga.tryNextChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" manga.Title c.Title (getHash c.Pages.Head))
+        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" manga.Title c.Title (getHash (NonEmptyList.head c.Pages)))
 
     html [] [
         head [] [
@@ -142,7 +143,7 @@ let mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
     |> renderHtmlDocument
     |> OK
 
-let urlDecode (ctx: HttpContext) =
+let private urlDecode (ctx: HttpContext) =
     asyncOption {
         let decodedUrl =
             ctx.request.url.ToString()
@@ -151,7 +152,7 @@ let urlDecode (ctx: HttpContext) =
         return { ctx with request = { ctx.request with url = decodedUrl } }
     }
 
-let app (port: int) =
+let private app (port: int) =
     urlDecode >=> choose [
         GET >=> choose [
             path "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()))
@@ -159,7 +160,7 @@ let app (port: int) =
             pathScan "/manga/%s" (Files.browseFile mangaData)
             pathScan "/manga/%s/%s" (fun (m, c) ->
                 let manga = List.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
-                let chapter: Chapter = List.find (fun ch -> ch.Title = c) manga.Chapters
+                let chapter: Chapter = NonEmptyList.find (fun ch -> ch.Title = c) manga.Chapters
                 mangaPage port manga chapter
             )
         ]
@@ -182,7 +183,7 @@ let app (port: int) =
         RequestErrors.NOT_FOUND "Page not found."
     ]
 
-let openInDefaultApp (url: string) =
+let private openInDefaultApp (url: string) =
     let cmd, args =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
             "cmd", sprintf "/c start \"%s\"" url
