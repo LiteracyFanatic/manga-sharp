@@ -1,7 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
+    <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Util.fs" />
@@ -18,6 +19,8 @@
   <ItemGroup>
     <PackageReference Include="argu" Version="5.5.0" />
     <PackageReference Include="Fsharp.Data" Version="3.1.1" />
-    <PackageReference Include="Suave.Experimental" Version="2.5.5" />
+    <PackageReference Include="Giraffe" Version="4.0.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="3.2.0" />
+    <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
   </ItemGroup>
 </Project>

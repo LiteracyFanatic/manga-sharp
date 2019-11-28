@@ -96,7 +96,7 @@ let private providers = [
             |> Option.map (fun node ->
                 node
                 |> HtmlNode.directInnerText
-                |> String.toLowerInvariant
+                |> fun s -> s.ToLowerInvariant()
                 |> textInfo.ToTitleCase
             )
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->

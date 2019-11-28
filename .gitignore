@@ -1,5 +1,7 @@
-obj
-bin
-.ionide
-node_modules
-dist
+obj/
+bin/
+.ionide/
+.vscode/
+.idea/
+node_modules/
+wwwroot/assets/

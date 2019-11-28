@@ -1,0 +1,5 @@
+#!/bin/bash
+cp -r bin/Debug/netcoreapp3.0/linux-x64/publish/ /usr/lib/manga/
+chmod -R 755 /usr/lib/manga/
+find /usr/lib/manga/ -type f ! -name manga -exec chmod 644 {} +
+install -m 755 manga.sh /usr/bin/manga

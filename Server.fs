@@ -2,16 +2,20 @@ module MangaSharp.Server
 
 open MangaSharp
 open MangaSharp.Util
-open System
 open System.IO
-open System.Net
 open System.Runtime.InteropServices
 open System.Diagnostics
-open Suave
-open Suave.Filters
-open Suave.Successful
-open Suave.Operators
-open Suave.FunctionalViewEngine
+open System.Web
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
+open Microsoft.AspNetCore.Http
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.FileProviders
+open Microsoft.Extensions.Hosting
+open Giraffe
+open Giraffe.GiraffeViewEngine
+open FSharp.Control.Tasks.V2.ContextInsensitive
+open Serilog
 
 let private chapterSelect (manga: StoredManga) (chapter: Chapter) =
     div [ attr "class" "control" ] [
@@ -55,7 +59,7 @@ let private index (storedManga: StoredManga list) =
             meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
             meta [ attr "charset" "utf-8" ]
             title [] [ encodedText "MangaSharp - Index" ]
-            link [ attr "rel" "stylesheet"; attr "href" "/bulma.min.css" ]
+            link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
             link [ attr "rel" "stylesheet"; attr "href" "/index.css" ]
             link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
         ]
@@ -89,8 +93,7 @@ let private index (storedManga: StoredManga list) =
             ]
         ]
     ]
-    |> renderHtmlDocument
-    |> OK
+    |> htmlView
 
 let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
     let getHash (page: Page) =
@@ -109,7 +112,7 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
             yield meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
             yield meta [ attr "charset" "utf-8" ]
             yield title [] [ encodedText (sprintf "MangaSharp - %s - %s" manga.Title chapter.Title) ]
-            yield link [ attr "rel" "stylesheet"; attr "href" "/bulma.min.css" ]
+            yield link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
             yield link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
             match manga.Source.Direction with
             | Horizontal ->
@@ -140,45 +143,44 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
             ]
         ]
     ]
-    |> renderHtmlDocument
-    |> OK
+    |> htmlView
 
-let private urlDecode (ctx: HttpContext) =
-    asyncOption {
-        let decodedUrl =
-            ctx.request.url.ToString()
-            |> WebUtility.UrlDecode
-            |> Uri
-        return { ctx with request = { ctx.request with url = decodedUrl } }
-    }
+let setLastManga =
+    (fun (next: HttpFunc) (ctx: HttpContext) ->
+        task {
+            use reader = new StreamReader(ctx.Request.Body)
+            let! body = reader.ReadToEndAsync()
+            let lastMangaPath = Path.Combine(mangaData, "last-manga")
+            do! File.WriteAllTextAsync(lastMangaPath, sprintf "%s\n" body)
+            return Some ctx
+        })
+    >=> Successful.NO_CONTENT
 
-let private app (port: int) =
-    urlDecode >=> choose [
+let setBookmark (mangaTitle: string) =
+    (fun (next: HttpFunc) (ctx: HttpContext) ->
+        task {
+            use reader = new StreamReader(ctx.Request.Body)
+            let! body = reader.ReadToEndAsync()
+            let manga = List.find (fun sm -> sm.Title = mangaTitle) (Manga.getStoredManga ())
+            let bookmarkPath = Path.Combine(mangaData, manga.Title, "bookmark")
+            do! File.WriteAllTextAsync(bookmarkPath, sprintf "%s\n" body)
+            return Some ctx
+        })
+    >=> Successful.NO_CONTENT
+
+let private webApp (port: int) =
+    choose [
         GET >=> choose [
-            path "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()))
-            Files.browseHome
-            pathScan "/manga/%s" (Files.browseFile mangaData)
-            pathScan "/manga/%s/%s" (fun (m, c) ->
+            route "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()))
+            routef "/manga/%s/%s" (fun (m, c) ->
                 let manga = List.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
                 let chapter: Chapter = NonEmptyList.find (fun ch -> ch.Title = c) manga.Chapters
                 mangaPage port manga chapter
             )
         ]
         PUT >=> choose [
-            path "/manga/last-manga" >=> request (fun r ->
-                let body = Text.Encoding.UTF8.GetString(r.rawForm)
-                let lastMangaPath = Path.Combine(mangaData, "last-manga")
-                File.WriteAllText(lastMangaPath, sprintf "%s\n" body)
-                Response.response HTTP_204 [||]
-            )
-            pathScan "/manga/%s/bookmark" (fun m ->
-                request (fun r ->
-                    let body = Text.Encoding.UTF8.GetString(r.rawForm)
-                    let manga = List.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
-                    let bookmarkPath = Path.Combine(mangaData, manga.Title, "bookmark")
-                    File.WriteAllText(bookmarkPath, sprintf "%s\n" body)
-                    Response.response HTTP_204 [||]
-            ))
+            route "/manga/last-manga" >=> setLastManga
+            routef "/manga/%s/bookmark" setBookmark
         ]
         RequestErrors.NOT_FOUND "Page not found."
     ]
@@ -203,18 +205,35 @@ let private openInDefaultApp (url: string) =
         )
     Process.Start(startInfo) |> ignore
 
+let private configureApp (port: int) (env: WebHostBuilderContext) (app : IApplicationBuilder) =
+    app
+        .UseStaticFiles()
+        .UseStaticFiles(
+            StaticFileOptions(
+                FileProvider=new PhysicalFileProvider(mangaData),
+                RequestPath=PathString("/manga")
+            )
+        )
+        .UseGiraffe(webApp port)
+
+let private configureServices (services : IServiceCollection) =
+    services.AddGiraffe() |> ignore
+
 let read (port: int Option) (openInBrowser: bool) (manga: StoredManga option) =
-    let binding =
-        match port with
-        | Some p -> HttpBinding.createSimple HTTP "127.0.0.1" p
-        | None -> HttpBinding.defaults
-    let config =
-        { defaultConfig with
-            homeFolder = Some (Path.GetFullPath("./dist"))
-            bindings = [binding] }
-    let chosenPort = int binding.socketBinding.port
-    let _, server = startWebServerAsync config (app chosenPort)
-    let task = Async.StartAsTask(server)
+    let p = Option.defaultValue 8080 port
+    let server =
+        Host
+            .CreateDefaultBuilder()
+            .UseSerilog(LoggerConfiguration().WriteTo.Console().CreateLogger())
+            .ConfigureWebHostDefaults(fun (webHost: IWebHostBuilder) ->
+                webHost
+                    .UseUrls(sprintf "http://localhost:%i" p)
+                    .ConfigureServices(configureServices)
+                    .Configure(configureApp p)
+                    |> ignore
+            )
+            .Build()
+            .RunAsync()
     if openInBrowser then
         let urlPath =
             match manga with
@@ -223,6 +242,6 @@ let read (port: int Option) (openInBrowser: bool) (manga: StoredManga option) =
                 | Some b -> Bookmark.toUrl m.Title b
                 | None -> Manga.firstPage m
             | None -> "/"
-        let url = sprintf "http://localhost:%i%s" chosenPort urlPath
+        let url = sprintf "http://localhost:%i%s" p urlPath
         openInDefaultApp url
-    task.Wait()
+    server.Wait()

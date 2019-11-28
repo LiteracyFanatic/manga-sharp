@@ -1,6 +1,5 @@
 #!/bin/bash
+mkdir -p wwwroot/assets
+cp node_modules/bulma/css/bulma.min.css wwwroot/assets/
 dotnet build
-rm -f dist/*
-mkdir -p dist
-cp viewer/* dist
-cp node_modules/bulma/css/bulma.min.css dist
+dotnet publish -r linux-x64 --no-self-contained
