@@ -3,6 +3,7 @@ module MangaSharp.Bookmark
 open MangaSharp
 open MangaSharp.Util
 open System.IO
+open System.Web
 
 let private tryParse (mangaTitle: string) (bookmark: string) =
     match bookmark.Split("/") with
@@ -57,6 +58,6 @@ let tryGetPage (bookmark: Bookmark) =
 let toUrl (mangaTitle: string) (bookmark: Bookmark) =
     match bookmark with
     | HorizontalBookmark (chapter, page) ->
-        sprintf "/manga/%s/%s#%s" mangaTitle chapter.Title page.Name
+        sprintf "/manga/%s/%s#%s" (HttpUtility.UrlEncode mangaTitle) chapter.Title page.Name
     | VerticalBookmark chapter ->
-        sprintf "/manga/%s/%s" mangaTitle chapter.Title
+        sprintf "/manga/%s/%s" (HttpUtility.UrlEncode mangaTitle) chapter.Title

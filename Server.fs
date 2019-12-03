@@ -10,7 +10,6 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.FileProviders
 open Microsoft.Extensions.Hosting
 open Giraffe
 open Giraffe.GiraffeViewEngine
@@ -102,10 +101,10 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
         | Vertical -> ""
     let previousLink =
         Manga.tryPreviousChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" manga.Title c.Title (getHash (NonEmptyList.last c.Pages)))
+        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (NonEmptyList.last c.Pages)))
     let nextLink =
         Manga.tryNextChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" manga.Title c.Title (getHash (NonEmptyList.head c.Pages)))
+        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (NonEmptyList.head c.Pages)))
 
     html [] [
         head [] [
@@ -124,7 +123,7 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
         body [
             if previousLink.IsSome then yield attr "data-previous-page" previousLink.Value
             if nextLink.IsSome then yield attr "data-next-page" nextLink.Value
-            yield attr "data-manga" manga.Title
+            yield attr "data-manga" (HttpUtility.UrlEncode manga.Title)
             yield attr "data-direction" (manga.Source.Direction.ToString())
             yield attr "data-chapter" chapter.Title
             yield attr "data-port" (string port)
@@ -138,7 +137,7 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
                 for p in chapter.Pages ->
                     img [
                         attr "data-page" p.Name;
-                        attr "src" (sprintf "/manga/%s/%s/%s" manga.Title chapter.Title p.File)
+                        attr "src" (sprintf "/manga/%s/%s/%s" (HttpUtility.UrlEncode manga.Title) chapter.Title p.File)
                     ]
             ]
         ]
@@ -172,15 +171,24 @@ let private webApp (port: int) =
     choose [
         GET >=> choose [
             route "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()))
-            routef "/manga/%s/%s" (fun (m, c) ->
-                let manga = List.find (fun sm -> sm.Title = m) (Manga.getStoredManga ())
-                let chapter: Chapter = NonEmptyList.find (fun ch -> ch.Title = c) manga.Chapters
-                mangaPage port manga chapter
+            subRoutef "/manga/%s/%s" (fun (m, c) ->
+                let mangaTitle = HttpUtility.UrlDecode m
+                choose [
+                    route "" >=> warbler (fun _ ->
+                        let manga = List.find (fun sm -> sm.Title = mangaTitle) (Manga.getStoredManga ())
+                        let chapter: Chapter = NonEmptyList.find (fun ch -> ch.Title = c) manga.Chapters
+                        mangaPage port manga chapter
+                    )
+                    routef "/%s" (fun p ->
+                        let path = Path.Combine(mangaData, mangaTitle, c, p)
+                        streamFile true path None None
+                    )
+                ]
             )
         ]
         PUT >=> choose [
             route "/manga/last-manga" >=> setLastManga
-            routef "/manga/%s/bookmark" setBookmark
+            routef "/manga/%s/bookmark" (HttpUtility.UrlDecode >> setBookmark)
         ]
         RequestErrors.NOT_FOUND "Page not found."
     ]
@@ -208,12 +216,6 @@ let private openInDefaultApp (url: string) =
 let private configureApp (port: int) (env: WebHostBuilderContext) (app : IApplicationBuilder) =
     app
         .UseStaticFiles()
-        .UseStaticFiles(
-            StaticFileOptions(
-                FileProvider=new PhysicalFileProvider(mangaData),
-                RequestPath=PathString("/manga")
-            )
-        )
         .UseGiraffe(webApp port)
 
 let private configureServices (services : IServiceCollection) =

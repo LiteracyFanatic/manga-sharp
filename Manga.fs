@@ -2,6 +2,7 @@ module MangaSharp.Manga
 
 open System
 open System.IO
+open System.Web
 open FSharp.Data
 open MangaSharp
 open MangaSharp.Util
@@ -167,7 +168,7 @@ let getStoredManga () =
 
 let firstPage (manga: StoredManga) =
     let chapter = NonEmptyList.head manga.Chapters
-    sprintf "/manga/%s/%s" manga.Title chapter.Title
+    sprintf "/manga/%s/%s" (HttpUtility.UrlEncode manga.Title) chapter.Title
 
 let tryPreviousChapter (manga: StoredManga) (chapter: Chapter) =
     let i = NonEmptyList.findIndex ((=) chapter) manga.Chapters
