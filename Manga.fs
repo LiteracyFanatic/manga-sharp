@@ -18,8 +18,11 @@ type private ChapterInfo = {
 }
 
 let private tryGetMangaInfo (manga: MangaSource) =
-    retry 3 1000 (fun () -> HtmlDocument.tryLoad manga.Url)
-    |> Option.map (fun index ->
+    let html =
+        retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync manga.Url)
+        |> Async.RunSynchronously
+    match html with
+    | Some index ->
         let title = manga.Provider.TitleExtractor manga.Url index
         let chapterUrls = manga.Provider.ChapterUrlsExtractor manga.Url index
         match title, chapterUrls with
@@ -31,12 +34,14 @@ let private tryGetMangaInfo (manga: MangaSource) =
             if chapterUrls.IsNone then
                 printfn "Could not extract chapter URLs from %s." manga.Url
             None
-    )
-    |> Option.flatten
+    | None ->  None
 
 let private tryGetChapterInfo (manga: MangaSource) (url: string) =
-    retry 3 1000 (fun () -> HtmlDocument.tryLoad url)
-    |> Option.map (fun chapterPage ->
+    let html =
+        retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync url)
+        |> Async.RunSynchronously
+    match html with
+    | Some chapterPage ->
         let title = manga.Provider.ChapterTitleExtractor url chapterPage
         let imageUrls = manga.Provider.ImageExtractor url chapterPage
         match title, imageUrls with
@@ -48,17 +53,20 @@ let private tryGetChapterInfo (manga: MangaSource) (url: string) =
             if imageUrls.IsNone then
                 printfn "Could not extract image URLs from %s." url
             None
-    )
-    |> Option.flatten
+    | None -> None
 
 let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
     let folder = Path.Combine(mangaData, mangaInfo.Title, chapterInfo.Title)
     Directory.CreateDirectory(folder) |> ignore
     chapterInfo.ImageUrls
     |> Seq.mapi (fun i url ->
-        let ext = Path.GetExtension(Uri(url).LocalPath)
-        let path = Path.ChangeExtension(Path.Combine(folder, sprintf "%03i" (i + 1)), ext)
-        retryAsync 3 1000 (fun () -> downloadFileAsync path url)
+        async {
+            let ext = Path.GetExtension(Uri(url).LocalPath)
+            let path = Path.ChangeExtension(Path.Combine(folder, sprintf "%03i" (i + 1)), ext)
+            match! retryAsync 3 1000 (fun () -> downloadFileAsync path url) with
+            | Some _ -> ()
+            | None -> printfn "Could not download %s." url
+        }
     )
     |> Async.Sequential
     |> Async.Ignore

@@ -1,23 +1,11 @@
 module MangaSharp.Util
 
 open System
-open System.Net
-open System.Threading
 open System.Collections
 open System.Collections.Generic
 open System.IO
+open System.Net.Http
 open FSharp.Data
-
-let rec retry (n: int) (ms: int) (f: unit -> 'T option) =
-    match f () with
-    | Some x ->
-        Some x
-    | None ->
-        if n = 0 then
-            None
-        else
-            Thread.Sleep(ms)
-            retry (n - 1) ms f
 
 let rec retryAsync (n: int) (ms: int) (f: unit -> Async<'T option>) =
     async {
@@ -32,15 +20,17 @@ let rec retryAsync (n: int) (ms: int) (f: unit -> Async<'T option>) =
                 return! retryAsync (n - 1) ms f
     }
 
+let private hc = lazy new HttpClient(Timeout=TimeSpan.FromSeconds(20.))
+
 let downloadFileAsync (path: string) (url: string) =
     async {
-        use wc = new WebClient()
         try
-            do! wc.AsyncDownloadFile(Uri(url), path)
+            let! downloadStream = hc.Force().GetStreamAsync(url) |> Async.AwaitTask
+            use fileStream = new FileStream(path, FileMode.Create)
+            do! downloadStream.CopyToAsync(fileStream) |> Async.AwaitTask
             return Some ()
         with
         | _ ->
-            printfn "Could not download %s." url
             return None
     }
 
@@ -70,15 +60,16 @@ module HtmlDocument =
             printfn "Could not parse HTML."
             None
 
-    let tryLoad (url: string) =
-        try
-            use wc = new WebClient()
-            let text = wc.DownloadString(url)
-            tryParse text
-        with
-        | :? WebException ->
-            printfn "Could not download %s." url
-            None
+    let tryLoadAsync (url: string) =
+        async {
+            try
+                let! text = hc.Force().GetStringAsync(url) |> Async.AwaitTask
+                return tryParse text
+            with
+            | :? HttpRequestException ->
+                printfn "Could not download %s." url
+                return None
+        }
 
 type NonEmptyList<'T> =
     private { List: 'T list }
