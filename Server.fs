@@ -133,7 +133,7 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
                 yield chapterSelect manga chapter
                 if manga.Source.Direction = Horizontal then yield pageSelect chapter
             ]
-            yield div [] [
+            yield div [ attr "id" "image-container" ] [
                 for p in chapter.Pages ->
                     img [
                         attr "data-page" p.Name;
