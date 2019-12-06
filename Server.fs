@@ -11,6 +11,10 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.FileProviders
+open Microsoft.Extensions.FileProviders.Internal
+open Microsoft.Extensions.FileProviders.Physical
+open Microsoft.Extensions.Primitives
 open Giraffe
 open Giraffe.GiraffeViewEngine
 open FSharp.Control.Tasks.V2.ContextInsensitive
@@ -173,17 +177,9 @@ let private webApp (port: int) =
             route "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()))
             subRoutef "/manga/%s/%s" (fun (m, c) ->
                 let mangaTitle = HttpUtility.UrlDecode m
-                choose [
-                    route "" >=> warbler (fun _ ->
-                        let manga = List.find (fun sm -> sm.Title = mangaTitle) (Manga.getStoredManga ())
-                        let chapter: Chapter = NonEmptyList.find (fun ch -> ch.Title = c) manga.Chapters
-                        mangaPage port manga chapter
-                    )
-                    routef "/%s" (fun p ->
-                        let path = Path.Combine(mangaData, mangaTitle, c, p)
-                        streamFile true path None None
-                    )
-                ]
+                let manga = List.find (fun sm -> sm.Title = mangaTitle) (Manga.getStoredManga ())
+                let chapter: Chapter = NonEmptyList.find (fun ch -> ch.Title = c) manga.Chapters
+                mangaPage port manga chapter
             )
         ]
         PUT >=> choose [
@@ -213,9 +209,27 @@ let private openInDefaultApp (url: string) =
         )
     Process.Start(startInfo) |> ignore
 
+type UrlDecodingFileProvider(root: string)  =
+    interface IFileProvider with
+        member __.GetDirectoryContents(subpath: string) : IDirectoryContents =
+            failwith "not implemented"
+
+        member __.GetFileInfo(subpath: string) : IFileInfo =
+            let fi = FileInfo(Path.Combine(root, (HttpUtility.UrlDecode subpath).Remove(0, 1)))
+            PhysicalFileInfo(fi) :> IFileInfo
+
+        member __.Watch(filter: string) : IChangeToken =
+            NullChangeToken.Singleton :> IChangeToken
+
 let private configureApp (port: int) (env: WebHostBuilderContext) (app : IApplicationBuilder) =
     app
         .UseStaticFiles()
+        .UseStaticFiles(
+            StaticFileOptions(
+                FileProvider=UrlDecodingFileProvider(mangaData),
+                RequestPath=PathString("/manga")
+            )
+        )
         .UseGiraffe(webApp port)
 
 let private configureServices (services : IServiceCollection) =
