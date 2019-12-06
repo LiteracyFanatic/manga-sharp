@@ -144,8 +144,8 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
     ]
     |> htmlView
 
-let setLastManga =
-    (fun (next: HttpFunc) (ctx: HttpContext) ->
+let private setLastManga =
+    handleContext (fun ctx ->
         task {
             use reader = new StreamReader(ctx.Request.Body)
             let! body = reader.ReadToEndAsync()
@@ -155,8 +155,8 @@ let setLastManga =
         })
     >=> Successful.NO_CONTENT
 
-let setBookmark (mangaTitle: string) =
-    (fun (next: HttpFunc) (ctx: HttpContext) ->
+let private setBookmark (mangaTitle: string) =
+    handleContext (fun ctx ->
         task {
             use reader = new StreamReader(ctx.Request.Body)
             let! body = reader.ReadToEndAsync()
