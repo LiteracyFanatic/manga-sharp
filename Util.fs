@@ -34,6 +34,16 @@ let downloadFileAsync (path: string) (url: string) =
             return None
     }
 
+let tryDownloadStringAsync (url: string) =
+    async {
+        try
+            let! res = hc.Force().GetStringAsync(url) |> Async.AwaitTask
+            return Some res
+        with
+        | _ ->
+            return None
+    }
+
 module File =
         
     let tryReadAllText (path: string) =

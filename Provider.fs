@@ -1,10 +1,13 @@
 module MangaSharp.Provider
 
 open System
+open System.IO
 open System.Text.RegularExpressions
+open System.Text.Json
 open System.Globalization
 open FSharp.Data
 open MangaSharp
+open MangaSharp.Util
 
 let private querySelector (html: HtmlDocument) (cssQuery: string) =
     match html.CssSelect(cssQuery) with
@@ -109,6 +112,48 @@ let private providers = [
             )
         ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
         ImageExtractor = extractImageUrls ".chapter-img"
+    }
+
+    {
+        Pattern = Regex("https://mangadex\.org/title/.*")
+        TitleExtractor = cssAndRegex "title" (Regex("(.*) \(Title\) - MangaDex"))
+        ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
+            let mangaId = regexMatch (Regex("https://mangadex\.org/title/(\d+)/.*")) url
+            mangaId
+            |> Option.map (fun mi ->
+                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=manga" mi
+                let json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                json
+                |> Option.map (fun j ->
+                    let doc = JsonDocument.Parse(j).RootElement
+                    let chapters = doc.GetProperty("chapter").EnumerateObject()
+                    chapters
+                    |> Seq.filter (fun c -> c.Value.GetProperty("lang_code").GetString() = "gb")
+                    |> Seq.map (fun c -> sprintf "https://mangadex.org/chapter/%s" c.Name)
+                    |> Seq.rev
+                )
+            )
+            |> Option.flatten
+        ChapterTitleExtractor = cssAndRegex "title" (Regex(".*Ch. (\d+(.\d+)*).*"))
+        ImageExtractor = fun (url: string) (html: HtmlDocument) ->
+            let chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
+            chapterId
+            |> Option.map(fun ci ->
+                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=chapter" ci
+                let json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                json
+                |> Option.map (fun j ->
+                    let doc = JsonDocument.Parse(j).RootElement
+                    let server = doc.GetProperty("server").GetString()
+                    let hash = doc.GetProperty("hash").GetString()
+                    let pages =
+                        doc.GetProperty("page_array").EnumerateArray()
+                        |> Seq.map (fun el -> el.GetString())
+                    pages
+                    |> Seq.map (fun p -> Path.Combine(server, hash, p))
+                )
+            )
+            |> Option.flatten
     }
 ]
 
