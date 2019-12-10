@@ -93,9 +93,9 @@ let main argv =
                 if readArgs.Contains(Title) then
                     printfn "Cannot specify --last and a manga title at the same time."
                 else
-                    match Manga.tryLast () with
-                    | Some m -> Server.read port openInBrowser (Some m)
-                    | None -> ()
+                    match Manga.getRecent () with
+                    | h :: t -> Server.read port openInBrowser (Some h)
+                    | [] -> ()
             else
                 match readArgs.TryGetResult(Title) with
                 | Some t ->

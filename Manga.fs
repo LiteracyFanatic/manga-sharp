@@ -194,10 +194,26 @@ let tryFromTitle (title: string) =
         printfn "Couldn't find a manga titled %s." title
         None
 
-let tryLast () =
-    let lastMangaPath = Path.Combine(mangaData, "last-manga")
-    if File.Exists(lastMangaPath) then
-        tryFromTitle (File.ReadAllText(lastMangaPath).Trim())
+let getRecent () =
+    let recentMangaPath = Path.Combine(mangaData, "recent-manga")
+    if File.Exists(recentMangaPath) then
+        File.ReadAllLines(recentMangaPath)
+        |> Seq.toList
+        |> List.map tryFromTitle
+        |> List.choose id
+        |> List.truncate 5
     else
-        printfn "Could not read %s." lastMangaPath
-        None
+        printfn "Could not read %s." recentMangaPath
+        []
+
+let setLast (title: string) =
+    let recentMangaPath = Path.Combine(mangaData, "recent-manga")
+    let recentManga =
+        if File.Exists(recentMangaPath) then
+            File.ReadAllLines recentMangaPath
+            |> Array.filter ((<>) title)
+            |> Array.append [| title |]
+            |> Array.truncate 5
+        else
+            [| title |]
+    File.WriteAllLines(recentMangaPath, recentManga)

@@ -8,7 +8,6 @@ open System.Diagnostics
 open System.Web
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
-open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Giraffe
@@ -52,7 +51,37 @@ let private homeButton =
         ]
     ]
 
-let private index (storedManga: StoredManga list) =
+let private mangaTable (storedManga: StoredManga list) (tableTitle: string) =
+    table [ attr "class" "table is-bordered is-striped" ] [
+        yield caption [ _class "is-size-3" ] [ encodedText tableTitle ]
+        yield thead [] [
+            tr [] [
+                th [] [ encodedText "Title" ]
+                th [] [ encodedText "Direction" ]
+                th [] [ encodedText "Source" ]
+                th [] [ encodedText "Progress" ]
+            ]
+        ]
+        for m in storedManga ->
+            let link =
+                match m.Bookmark with
+                | Some b -> Bookmark.toUrl m.Title b
+                | None -> Manga.firstPage m
+            let selectedChapter =
+                match m.Bookmark with
+                | Some b -> Bookmark.getChapter b
+                | None -> NonEmptyList.head m.Chapters
+
+            tr [] [
+                yield td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
+                yield td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
+                yield td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
+                let n = 1 + NonEmptyList.findIndex ((=) selectedChapter) m.Chapters
+                yield td [ _width "10%" ] [ encodedText (sprintf "%i/%i" n (NonEmptyList.length m.Chapters)) ]
+            ]
+    ]
+
+let private index (allManga: StoredManga list) (recentManga: StoredManga list) =
     html [] [
         head [] [
             meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
@@ -63,33 +92,8 @@ let private index (storedManga: StoredManga list) =
             link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
         ]
         body [] [
-            table [ attr "class" "table is-bordered is-striped" ] [
-                yield thead [] [
-                    tr [] [
-                        th [] [ encodedText "Title" ]
-                        th [] [ encodedText "Direction" ]
-                        th [] [ encodedText "Source" ]
-                        th [] [ encodedText "Progress" ]
-                    ]
-                ]
-                for m in storedManga ->
-                    let link =
-                        match m.Bookmark with
-                        | Some b -> Bookmark.toUrl m.Title b
-                        | None -> Manga.firstPage m
-                    let selectedChapter =
-                        match m.Bookmark with
-                        | Some b -> Bookmark.getChapter b
-                        | None -> NonEmptyList.head m.Chapters
-
-                    tr [] [
-                        yield td [] [ a [ attr "href" link ] [ encodedText m.Title ] ]
-                        yield td [] [ encodedText (m.Source.Direction.ToString()) ]
-                        yield td [] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
-                        let n = 1 + NonEmptyList.findIndex ((=) selectedChapter) m.Chapters
-                        yield td [] [ encodedText (sprintf "%i/%i" n (NonEmptyList.length m.Chapters)) ]
-                    ]
-            ]
+            mangaTable recentManga "Recent"
+            mangaTable allManga "All"
         ]
     ]
     |> htmlView
@@ -149,8 +153,7 @@ let private setLastManga =
         task {
             use reader = new StreamReader(ctx.Request.Body)
             let! body = reader.ReadToEndAsync()
-            let lastMangaPath = Path.Combine(mangaData, "last-manga")
-            do! File.WriteAllTextAsync(lastMangaPath, sprintf "%s\n" body)
+            Manga.setLast (HttpUtility.UrlDecode body)
             return Some ctx
         })
     >=> Successful.NO_CONTENT
@@ -170,7 +173,7 @@ let private setBookmark (mangaTitle: string) =
 let private webApp (port: int) =
     choose [
         GET >=> choose [
-            route "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()))
+            route "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()) (Manga.getRecent ()))
             subRoutef "/manga/%s/%s" (fun (m, c) ->
                 let mangaTitle = HttpUtility.UrlDecode m
                 choose [
