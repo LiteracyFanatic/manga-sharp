@@ -51,17 +51,8 @@ let private homeButton =
         ]
     ]
 
-let private mangaTable (storedManga: StoredManga list) (tableTitle: string) =
-    table [ attr "class" "table is-bordered is-striped" ] [
-        yield caption [ _class "is-size-3" ] [ encodedText tableTitle ]
-        yield thead [] [
-            tr [] [
-                th [] [ encodedText "Title" ]
-                th [] [ encodedText "Direction" ]
-                th [] [ encodedText "Source" ]
-                th [] [ encodedText "Progress" ]
-            ]
-        ]
+let private mangaTable (storedManga: StoredManga list) =
+    ul [ ] [
         for m in storedManga ->
             let link =
                 match m.Bookmark with
@@ -72,12 +63,15 @@ let private mangaTable (storedManga: StoredManga list) (tableTitle: string) =
                 | Some b -> Bookmark.getChapter b
                 | None -> NonEmptyList.head m.Chapters
 
-            tr [] [
-                yield td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
-                yield td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
-                yield td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
+            li [] [
+                yield span [] [ a [ attr "href" link ] [ encodedText m.Title ] ]
+                yield span [] [ encodedText " | " ]
+                yield span [] [ encodedText (sprintf "Direction: %s" (m.Source.Direction.ToString())) ]
+                yield span [] [ encodedText " | " ]
+                yield a [ attr "href" m.Source.Url ] [ encodedText "Source" ]
+                yield span [] [ encodedText " | " ]
                 let n = 1 + NonEmptyList.findIndex ((=) selectedChapter) m.Chapters
-                yield td [ _width "10%" ] [ encodedText (sprintf "%i/%i" n (NonEmptyList.length m.Chapters)) ]
+                yield span [] [ encodedText (sprintf "Progress: (%i/%i)" n (NonEmptyList.length m.Chapters)) ]
             ]
     ]
 
@@ -92,8 +86,10 @@ let private index (allManga: StoredManga list) (recentManga: StoredManga list) =
             link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
         ]
         body [] [
-            mangaTable recentManga "Recent"
-            mangaTable allManga "All"
+            h3 [ _class "is-size-3" ] [ encodedText "Recent" ]
+            mangaTable recentManga
+            h3 [ _class "is-size-3" ] [ encodedText "All" ]
+            mangaTable allManga
         ]
     ]
     |> htmlView
