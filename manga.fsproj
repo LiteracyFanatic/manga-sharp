@@ -16,11 +16,5 @@
     <Compile Include="Server.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="argu" Version="5.5.0" />
-    <PackageReference Include="Fsharp.Data" Version="3.1.1" />
-    <PackageReference Include="Giraffe" Version="4.0.1" />
-    <PackageReference Include="Serilog.AspNetCore" Version="3.2.0" />
-    <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
-  </ItemGroup>
+  <Import Project=".paket\Paket.Restore.targets" />
 </Project>

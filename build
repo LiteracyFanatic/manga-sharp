@@ -1,5 +1,7 @@
 #!/bin/bash
 mkdir -p wwwroot/assets
 cp node_modules/bulma/css/bulma.min.css wwwroot/assets/
+dotnet tool restore
+dotnet paket restore
 dotnet build
 dotnet publish -r linux-x64 --no-self-contained

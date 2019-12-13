@@ -3,5 +3,7 @@ bin/
 .ionide/
 .vscode/
 .idea/
+.paket/
+paket-files/
 node_modules/
 wwwroot/assets/

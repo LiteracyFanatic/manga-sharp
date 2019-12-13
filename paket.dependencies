@@ -1,0 +1,10 @@
+source https://api.nuget.org/v3/index.json
+
+storage: none
+framework: auto-detect
+
+nuget argu
+nuget Fsharp.data
+nuget Giraffe
+nuget Serilog.AspNetCore
+nuget TaskBuilder.fs
