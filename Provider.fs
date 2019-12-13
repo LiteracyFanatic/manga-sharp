@@ -9,6 +9,7 @@ open System.Net.Http
 open FSharp.Data
 open MangaSharp
 open MangaSharp.Util
+open Flurl
 
 let private querySelector (html: HtmlDocument) (cssQuery: string) =
     match html.CssSelect(cssQuery) with
@@ -158,6 +159,80 @@ let private providers = [
                 )
             )
             |> Option.flatten
+    }
+
+    {
+        Pattern = Regex("https://www\.webtoons\.com/en/.*/.*/list\?.*")
+        TitleExtractor = cssAndRegex "title" (Regex("(.*) \| WEBTOON"))
+        ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
+            let rec getLastPageGroup urlArg htmlArg =
+                match querySelector htmlArg "a.pg_next" with
+                | Some el ->
+                    let nextPageGroupHref =
+                        HtmlNode.attributeValue "href" el
+                        |> resolveUrl urlArg
+                    retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync nextPageGroupHref)
+                    |> Async.RunSynchronously
+                    |> Option.map (fun h -> getLastPageGroup nextPageGroupHref h)
+                    |> Option.flatten
+                | None -> Some (urlArg, htmlArg)
+            let lastPageHref =
+                getLastPageGroup url html
+                |> Option.map (fun (url, html) ->
+                    querySelectorAll html ".paginate a"
+                    |> Option.map (List.last >> HtmlNode.attributeValue "href" >> resolveUrl url)
+                )
+                |> Option.flatten
+            let lastPageNumber =
+                lastPageHref
+                |> Option.map (fun href ->
+                    match Url(href).QueryParams.["page"] |> string with
+                    | "" -> 1
+                    | n -> int n
+                )
+            let pageUrls =
+                lastPageNumber
+                |> Option.map (fun n ->
+                    [ 1 .. n ]
+                    |> List.map (fun i -> url.SetQueryParam("page", i))
+                )
+            let lift l =
+                if Seq.contains None l then None
+                else Some (Seq.map Option.get l)
+            let chapterUrlGroups =
+                pageUrls
+                |> Option.map (fun pages ->
+                    pages
+                    |> List.toSeq
+                    |> Seq.map (fun page ->
+                        let html =
+                            retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync (page.ToString()))
+                            |> Async.RunSynchronously
+                        let chapterUrls =
+                            querySelectorAll html.Value "#_listUl a"
+                            |> Option.map (fun chapters ->
+                                chapters
+                                |> Seq.map (HtmlNode.attributeValue "href")
+                            )
+                        chapterUrls
+                    )
+                )
+            chapterUrlGroups
+            |> Option.map (lift >> Option.map (Seq.collect id >> Seq.rev))
+            |> Option.flatten
+        ChapterTitleExtractor = urlMatch (Regex("episode_no=(\d+)"))
+        ImageExtractor = fun (url: string) (html: HtmlDocument) ->
+            querySelectorAll html "#_imageList img"
+            |> Option.map (fun imgs ->
+                imgs
+                |> List.map (fun img ->
+                    let reqUrl = HtmlNode.attributeValue "data-url" img
+                    let req = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, reqUrl)
+                    req.Headers.Referrer <- Uri(url)
+                    req
+                )
+                |> List.toSeq
+            )
     }
 ]
 
