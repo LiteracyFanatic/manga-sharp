@@ -5,6 +5,7 @@ open System.IO
 open System.Text.RegularExpressions
 open System.Text.Json
 open System.Globalization
+open System.Net.Http
 open FSharp.Data
 open MangaSharp
 open MangaSharp.Util
@@ -70,9 +71,12 @@ let private extractChapterUrls (cssQuery: string) = fun (url: string) (html: Htm
         |> Seq.distinct
     )
 
+let toHttpRequestMessage (url: string) =
+    new HttpRequestMessage(System.Net.Http.HttpMethod.Get, url)
+
 let private extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
     querySelectorAll html cssQuery
-    |> Option.map (Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url))
+    |> Option.map (Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url >> toHttpRequestMessage))
 
 let private providers = [
     {
@@ -150,7 +154,7 @@ let private providers = [
                         doc.GetProperty("page_array").EnumerateArray()
                         |> Seq.map (fun el -> el.GetString())
                     pages
-                    |> Seq.map (fun p -> Path.Combine(server, hash, p))
+                    |> Seq.map (fun p -> Path.Combine(server, hash, p) |> toHttpRequestMessage)
                 )
             )
             |> Option.flatten

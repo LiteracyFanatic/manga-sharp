@@ -4,6 +4,7 @@ module MangaSharp.Types
 open System
 open System.IO
 open System.Text.RegularExpressions
+open System.Net.Http
 open FSharp.Data
 open MangaSharp.Util
 
@@ -20,7 +21,7 @@ type Provider = {
     TitleExtractor: string -> HtmlDocument -> string option
     ChapterUrlsExtractor: string -> HtmlDocument -> string seq option
     ChapterTitleExtractor: string -> HtmlDocument -> string option
-    ImageExtractor: string -> HtmlDocument -> string seq option
+    ImageExtractor: string -> HtmlDocument -> HttpRequestMessage seq option
 }
 
 type MangaSource = {

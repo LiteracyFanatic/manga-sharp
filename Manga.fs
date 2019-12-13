@@ -2,6 +2,7 @@ module MangaSharp.Manga
 
 open System
 open System.IO
+open System.Net.Http
 open System.Web
 open FSharp.Data
 open MangaSharp
@@ -14,7 +15,7 @@ type private MangaInfo = {
 
 type private ChapterInfo = {
     Title: string
-    ImageUrls: string seq
+    ImageRequests: HttpRequestMessage seq
 }
 
 let private tryGetMangaInfo (manga: MangaSource) =
@@ -46,7 +47,7 @@ let private tryGetChapterInfo (manga: MangaSource) (url: string) =
         let imageUrls = manga.Provider.ImageExtractor url chapterPage
         match title, imageUrls with
         | Some title, Some imageUrls ->
-            Some { Title = title; ImageUrls = imageUrls }
+            Some { Title = title; ImageRequests = imageUrls }
         | title, imageUrls ->
             if title.IsNone then
                 printfn "Could not extract title from %s." url
@@ -58,14 +59,14 @@ let private tryGetChapterInfo (manga: MangaSource) (url: string) =
 let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
     let folder = Path.Combine(mangaData, mangaInfo.Title, chapterInfo.Title)
     Directory.CreateDirectory(folder) |> ignore
-    chapterInfo.ImageUrls
-    |> Seq.mapi (fun i url ->
+    chapterInfo.ImageRequests
+    |> Seq.mapi (fun i req ->
         async {
-            let ext = Path.GetExtension(Uri(url).LocalPath)
+            let ext = Path.GetExtension(req.RequestUri.LocalPath)
             let path = Path.ChangeExtension(Path.Combine(folder, sprintf "%03i" (i + 1)), ext)
-            match! retryAsync 3 1000 (fun () -> downloadFileAsync path url) with
+            match! retryAsync 3 1000 (fun () -> downloadFileAsync path req) with
             | Some _ -> ()
-            | None -> printfn "Could not download %s." url
+            | None -> printfn "Could not download %s." (req.RequestUri.ToString())
         }
     )
     |> Async.Sequential

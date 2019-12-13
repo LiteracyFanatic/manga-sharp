@@ -22,10 +22,11 @@ let rec retryAsync (n: int) (ms: int) (f: unit -> Async<'T option>) =
 
 let private hc = lazy new HttpClient(Timeout=TimeSpan.FromSeconds(20.))
 
-let downloadFileAsync (path: string) (url: string) =
+let downloadFileAsync (path: string) (req: HttpRequestMessage) =
     async {
         try
-            let! downloadStream = hc.Force().GetStreamAsync(url) |> Async.AwaitTask
+            let! res = hc.Force().SendAsync(req) |> Async.AwaitTask
+            let! downloadStream = res.Content.ReadAsStreamAsync() |> Async.AwaitTask
             use fileStream = new FileStream(path, FileMode.Create)
             do! downloadStream.CopyToAsync(fileStream) |> Async.AwaitTask
             return Some ()
