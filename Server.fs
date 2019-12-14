@@ -21,8 +21,8 @@ let private chapterSelect (manga: StoredManga) (chapter: Chapter) =
             select [ attr "id" "chapter-select" ] [
                 for c in manga.Chapters ->
                     option [
-                        yield attr "value" c.Title
-                        if c = chapter then yield attr "selected" ""
+                        attr "value" c.Title
+                        if c = chapter then attr "selected" ""
                     ] [ encodedText (sprintf "Chapter %s" c.Title) ]
             ]
         ]
@@ -73,11 +73,11 @@ let private mangaTable (storedManga: StoredManga list) (tableTitle: string) =
                 | None -> NonEmptyList.head m.Chapters
 
             tr [] [
-                yield td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
-                yield td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
-                yield td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
+                td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
+                td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
+                td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
                 let n = 1 + NonEmptyList.findIndex ((=) selectedChapter) m.Chapters
-                yield td [ _width "10%" ] [ encodedText (sprintf "%i/%i" n (NonEmptyList.length m.Chapters)) ]
+                td [ _width "10%" ] [ encodedText (sprintf "%i/%i" n (NonEmptyList.length m.Chapters)) ]
             ]
     ]
 
@@ -112,32 +112,32 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
 
     html [] [
         head [] [
-            yield meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
-            yield meta [ attr "charset" "utf-8" ]
-            yield title [] [ encodedText (sprintf "MangaSharp - %s - %s" manga.Title chapter.Title) ]
-            yield link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
-            yield link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
+            meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
+            meta [ attr "charset" "utf-8" ]
+            title [] [ encodedText (sprintf "MangaSharp - %s - %s" manga.Title chapter.Title) ]
+            link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
+            link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
             match manga.Source.Direction with
             | Horizontal ->
-                yield link [ attr "rel" "stylesheet"; attr "href" "/horizontal.css" ]
+                link [ attr "rel" "stylesheet"; attr "href" "/horizontal.css" ]
             | Vertical ->
-                yield link [ attr "rel" "stylesheet"; attr "href" "/vertical.css" ]
-            yield script [ attr "src" "/manga.js" ] []
+                link [ attr "rel" "stylesheet"; attr "href" "/vertical.css" ]
+            script [ attr "src" "/manga.js" ] []
         ]
         body [
-            if previousLink.IsSome then yield attr "data-previous-page" previousLink.Value
-            if nextLink.IsSome then yield attr "data-next-page" nextLink.Value
-            yield attr "data-manga" (HttpUtility.UrlEncode manga.Title)
-            yield attr "data-direction" (manga.Source.Direction.ToString())
-            yield attr "data-chapter" chapter.Title
-            yield attr "data-port" (string port)
+            if previousLink.IsSome then attr "data-previous-page" previousLink.Value
+            if nextLink.IsSome then attr "data-next-page" nextLink.Value
+            attr "data-manga" (HttpUtility.UrlEncode manga.Title)
+            attr "data-direction" (manga.Source.Direction.ToString())
+            attr "data-chapter" chapter.Title
+            attr "data-port" (string port)
         ] [
-            yield div [ attr "id" "select-container"; attr "class" "field is-grouped" ] [
-                yield homeButton
-                yield chapterSelect manga chapter
-                if manga.Source.Direction = Horizontal then yield pageSelect chapter
+            div [ attr "id" "select-container"; attr "class" "field is-grouped" ] [
+                homeButton
+                chapterSelect manga chapter
+                if manga.Source.Direction = Horizontal then pageSelect chapter
             ]
-            yield div [ attr "id" "image-container" ] [
+            div [ attr "id" "image-container" ] [
                 for p in chapter.Pages ->
                     img [
                         attr "data-page" p.Name;
