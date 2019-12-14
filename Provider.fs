@@ -139,7 +139,19 @@ let private providers = [
                 )
             )
             |> Option.flatten
-        ChapterTitleExtractor = cssAndRegex "title" (Regex(".*Ch. (\d+(.\d+)*).*"))
+        ChapterTitleExtractor = fun (url: string) (html: HtmlDocument) ->
+            let chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
+            chapterId
+            |> Option.map(fun ci ->
+                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=chapter" ci
+                let json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                json
+                |> Option.map (fun j ->
+                    let doc = JsonDocument.Parse(j).RootElement
+                    doc.GetProperty("chapter").GetString()
+                )
+            )
+            |> Option.flatten
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
             let chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
             chapterId
