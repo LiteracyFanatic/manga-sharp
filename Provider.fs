@@ -133,7 +133,11 @@ let private providers = [
                     let doc = JsonDocument.Parse(j).RootElement
                     let chapters = doc.GetProperty("chapter").EnumerateObject()
                     chapters
-                    |> Seq.filter (fun c -> c.Value.GetProperty("lang_code").GetString() = "gb")
+                    |> Seq.filter (fun c ->
+                        let langCode = c.Value.GetProperty("lang_code").GetString()
+                        let timeStamp = c.Value.GetProperty("timestamp").GetInt64()
+                        langCode = "gb" && timeStamp <= DateTimeOffset.Now.ToUnixTimeSeconds()
+                    )
                     |> Seq.map (fun c -> sprintf "https://mangadex.org/chapter/%s" c.Name)
                     |> Seq.rev
                 )
