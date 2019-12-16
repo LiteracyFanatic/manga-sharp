@@ -1,9 +1,10 @@
 module MangaSharp.Manga
 
-open System
 open System.IO
 open System.Net.Http
 open System.Web
+open Newtonsoft.Json
+open Microsoft.FSharpLu.Json
 open FSharp.Data
 open MangaSharp
 open MangaSharp.Util
@@ -73,39 +74,71 @@ let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
     |> Async.Ignore
     |> Async.RunSynchronously
 
-let private getExistingChapterUrls (mangaInfo: MangaInfo) =
-    let chaptersPath = Path.Combine(mangaData, mangaInfo.Title, "chapters")
-    if File.Exists(chaptersPath) then
-        Seq.ofArray (File.ReadAllLines(chaptersPath))
-    else
-        Seq.empty
+type DownloadStatus =
+    | NotDownloaded
+    | Downloaded
+    | Ignored
 
-let private getNewChapterUrls (mangaInfo: MangaInfo) =
-    let chapterUrlsSet = Set.ofSeq mangaInfo.ChapterUrls
-    let existingChaptersSet = Set.ofSeq (getExistingChapterUrls mangaInfo)
+type ChapterStatus = {
+    Url: string
+    Title: string option
+    DownloadStatus: DownloadStatus
+}
+
+let private opts = JsonSerializerSettings()
+opts.Formatting <- Formatting.Indented
+opts.Converters.Add(CompactUnionJsonConverter())
+
+let private getChapterStatuses (mangaTitle: string) =
+    let chaptersPath = Path.Combine(mangaData, mangaTitle, "chapters")
+    if File.Exists(chaptersPath) then
+        let json = File.ReadAllText(chaptersPath)
+        JsonConvert.DeserializeObject<ChapterStatus list>(json, opts)
+    else
+        []
+
+let private mergeChapterStatuses (mangaInfo: MangaInfo) (urls: string list) (chapters: ChapterStatus list) =
+    let existingChaptersSet = set (List.map (fun c -> c.Url) chapters)
+    let chapterUrlsSet = set urls
     if not (existingChaptersSet.IsSubsetOf chapterUrlsSet) then
         printfn "WARNING: There are previously downloaded chapters for %s from URLs not listed by the current source. This may indicate a change in page structure."
             mangaInfo.Title
-
-    let newChapters = Set.difference chapterUrlsSet existingChaptersSet
-    if Set.isEmpty newChapters then
-        Seq.empty
-    else
-        Seq.filter newChapters.Contains mangaInfo.ChapterUrls
-
-let private downloadChapterSeq (manga: MangaSource) (mangaInfo: MangaInfo) (urls: string seq) =
-    let n = Seq.length urls
     urls
-    |> Seq.iteri (fun i url ->
-        match tryGetChapterInfo manga url with
-        | Some chapterInfo ->
-            printfn "Downloading %s Chapter %s (%i/%i)..." mangaInfo.Title chapterInfo.Title (i + 1) n
-            downloadChapter mangaInfo chapterInfo
-            let chaptersPath = Path.Combine(mangaData, mangaInfo.Title, "chapters")
-            File.AppendAllText(chaptersPath, sprintf "%s\n" url)
-        | None ->
-            ()
+    |> List.map (fun url ->
+        let title, downloadStatus =
+            match List.tryFind (fun chapter -> chapter.Url = url) chapters with
+            | Some chapter -> chapter.Title, chapter.DownloadStatus
+            | None -> None, NotDownloaded
+        {
+            Url = url
+            Title = title
+            DownloadStatus = downloadStatus
+        }
     )
+
+let private downloadChapters (manga: MangaSource) (mangaInfo: MangaInfo) (chapters: ChapterStatus list) =
+    let chaptersPath = Path.Combine(mangaData, mangaInfo.Title, "chapters")
+    let n =
+        chapters
+        |> List.filter (fun c -> c.DownloadStatus = NotDownloaded)
+        |> List.length
+    let rec loop i count chapters =
+        if i < List.length chapters then
+            if chapters.[i].DownloadStatus = NotDownloaded then
+                let chapters' =
+                    match tryGetChapterInfo manga chapters.[i].Url with
+                    | Some chapterInfo ->
+                        printfn "Downloading %s Chapter %s (%i/%i)..." mangaInfo.Title chapterInfo.Title count n
+                        downloadChapter mangaInfo chapterInfo
+                        chapters
+                        |> List.mapAt i (fun chapter ->
+                            { chapter with Title = Some chapterInfo.Title; DownloadStatus = Downloaded })
+                    | None -> chapters
+                File.WriteAllText(chaptersPath, JsonConvert.SerializeObject(chapters', opts))
+                loop (i + 1) (count + 1) chapters'
+            else
+                loop (i + 1) count chapters
+    loop 0 1 chapters
     printfn "Finished downloading %s." mangaInfo.Title
 
 let private createMangaDir (title: string) (manga: MangaSource) =
@@ -118,29 +151,22 @@ let download (manga: MangaSource) =
     match tryGetMangaInfo manga with
     | Some mangaInfo ->
         createMangaDir mangaInfo.Title manga
-        downloadChapterSeq manga mangaInfo mangaInfo.ChapterUrls
-    | None ->
-        ()
-
-let update (manga: MangaSource) =
-    match tryGetMangaInfo manga with
-    | Some mangaInfo ->
-        let chapters = getNewChapterUrls mangaInfo
-        if Seq.isEmpty chapters then
-            false
-        else
-            downloadChapterSeq manga mangaInfo chapters
+        let chapterInfo = getChapterStatuses mangaInfo.Title
+        let chapters = mergeChapterStatuses mangaInfo (List.ofSeq mangaInfo.ChapterUrls) chapterInfo
+        if List.exists (fun chapter -> chapter.DownloadStatus = NotDownloaded) chapters then
+            downloadChapters manga mangaInfo chapters
             true
-    | None ->
-        false
+        else
+            false
+    | None -> false
 
 let private fromDir (dir: string) =
     let title = Path.GetFileName(dir)
+    let chapterStatuses = getChapterStatuses title
     let chapters =
-        Directory.GetDirectories(dir)
-        |> Array.toList
-        |> List.choose Chapter.tryFromDir
-        |> List.sortBy (fun c -> float c.Title)
+        chapterStatuses
+        |> List.filter (fun c -> c.DownloadStatus = Downloaded)
+        |> List.choose (fun c -> Chapter.tryFromDir (Path.Combine(dir, c.Title.Value)))
         |> NonEmptyList.tryCreate
     let indexUrl = File.tryReadAllText (Path.Combine(dir, "source"))
     let direction =

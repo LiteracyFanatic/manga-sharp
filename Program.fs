@@ -1,5 +1,4 @@
-﻿open System.IO
-open MangaSharp
+﻿open MangaSharp
 open Argu
 open MangaSharp.Util
 
@@ -69,7 +68,7 @@ let main argv =
                     Direction = direction
                     Provider = provider
                 }
-                Manga.download manga
+                Manga.download manga |> ignore
             | None ->
                 ()
         | Update updateArgs ->
@@ -77,13 +76,13 @@ let main argv =
             let updated =
                 if updateArgs.Contains(All) then
                     Manga.getStoredManga ()
-                    |> List.map (fun m -> Manga.update m.Source)
+                    |> List.map (fun m -> Manga.download m.Source)
                     |> List.contains true
                 else
                     let manga = updateArgs.GetResult(Manga)
                     let { Source = source } =
                         List.find (fun m -> m.Title = manga) (Manga.getStoredManga ())
-                    Manga.update source
+                    Manga.download source
             if not updated then
                 printfn "No updates were found."
         | Read readArgs ->

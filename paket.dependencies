@@ -7,5 +7,6 @@ nuget argu
 nuget Flurl
 nuget Fsharp.data
 nuget Giraffe
+nuget Microsoft.FSharpLu.Json
 nuget Serilog.AspNetCore
 nuget TaskBuilder.fs

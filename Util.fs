@@ -82,6 +82,10 @@ module HtmlDocument =
                 return None
         }
 
+module List =
+    let mapAt (i: int) (f: 'a -> 'a) (list: 'a list) =
+        List.mapi (fun n x -> if n = i then f x else x) list
+
 type NonEmptyList<'T> =
     private { List: 'T list }
 
