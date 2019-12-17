@@ -3,6 +3,7 @@ module MangaSharp.Page
 open MangaSharp
 open MangaSharp.Util
 open System.IO
+open Giraffe.ComputationExpressions
 
 let private fromFileName (file: string) =
     {
@@ -29,6 +30,7 @@ let private fromChapterTitle (mangaTitle: string) (chapterTitle: string) =
     fromDir dir
 
 let tryFromTitle (mangaTitle: string) (chapterTitle: string) (pageTitle: string) =
-    fromChapterTitle mangaTitle chapterTitle
-    |> Option.map (NonEmptyList.tryFind (fun p -> p.Name = pageTitle))
-    |> Option.flatten
+    opt {
+        let! pages = fromChapterTitle mangaTitle chapterTitle
+        return! NonEmptyList.tryFind (fun p -> p.Name = pageTitle) pages
+    }

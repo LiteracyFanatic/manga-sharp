@@ -3,14 +3,14 @@ module MangaSharp.Chapter
 open MangaSharp
 open MangaSharp.Util
 open System.IO
+open Giraffe.ComputationExpressions
 
 let tryFromDir (dir: string) =
-    let title = DirectoryInfo(dir).Name
-    match Page.fromDir dir with
-    | Some pages ->
-        Some { Title = title; Pages = pages }
-    | None ->
-        None
+    opt {
+        let title = DirectoryInfo(dir).Name
+        let! pages = Page.fromDir dir
+        return { Title = title; Pages = pages }
+    }
 
 let tryFromTitle (mangaTitle: string) (chapterTitle: string) =
     tryFromDir (Path.Combine(mangaData, mangaTitle, chapterTitle))

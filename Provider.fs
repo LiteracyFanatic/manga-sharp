@@ -10,74 +10,70 @@ open FSharp.Data
 open MangaSharp
 open MangaSharp.Util
 open Flurl
+open Giraffe.ComputationExpressions
 
 let private querySelector (html: HtmlDocument) (cssQuery: string) =
-    match html.CssSelect(cssQuery) with
-    | [] ->
-        printfn "%s did not match any elements." cssQuery
-        None
-    | [node] ->
-        Some node
-    | _ ->
-        printfn "%s matched multiple elements." cssQuery
-        None
+    opt {
+        match html.CssSelect(cssQuery) with
+        | [] -> printfn "%s did not match any elements." cssQuery
+        | [node] -> return node
+        | _ -> printfn "%s matched multiple elements." cssQuery
+    }
 
 let private querySelectorAll (html: HtmlDocument) (cssQuery: string) =
-    match html.CssSelect(cssQuery) with
-    | [] ->
-        printfn "%s didn't match any elements." cssQuery
-        None
-    | elements ->
-        Some elements
+    opt {
+        match html.CssSelect(cssQuery) with
+        | [] -> printfn "%s didn't match any elements." cssQuery
+        | elements -> return elements
+    }
 
 let private regexMatch (regex: Regex) (input: string) =
-    let m = regex.Match(input)
-    if m.Success then
-        let groups = seq m.Groups
-        match Seq.tryItem 1 groups with
-        | Some group ->
-            match group.Value.Trim() with
-            | "" ->
-                printfn "%A returned an empty match." regex
-                None
-            | value ->
-                Some value
-        | None ->
-            printfn "%A capture group 1 did not exist." regex
-            None
-    else
-        printfn "%A did not match." regex
-        None
+    opt {
+        let m = regex.Match(input)
+        if m.Success then
+            let groups = seq m.Groups
+            match Seq.tryItem 1 groups with
+            | Some group ->
+                match group.Value.Trim() with
+                | "" -> printfn "%A returned an empty match." regex
+                | value -> return value
+            | None -> printfn "%A capture group 1 did not exist." regex
+        else
+            printfn "%A did not match." regex
+    }
 
 let private urlMatch (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
     regexMatch regex url
 
 let private cssAndRegex (cssQuery: string) (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
-    querySelector html cssQuery
-    |> Option.map (fun node ->
+    opt {
+        let! node = querySelector html cssQuery
         let text = HtmlNode.directInnerText node
-        regexMatch regex text
-    )
-    |> Option.flatten
+        return! regexMatch regex text
+    }
 
 let private resolveUrl (baseUrl: string) (url: string) =
     Uri(Uri(baseUrl), url).AbsoluteUri
 
 let private extractChapterUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
-    querySelectorAll html cssQuery
-    |> Option.map (fun chapters ->
-        chapters
-        |> Seq.rev
-        |> Seq.map (HtmlNode.attributeValue "href" >> resolveUrl url)
-        |> Seq.distinct
-    )
+    opt {
+        let! chapters = querySelectorAll html cssQuery
+        let urls =
+            chapters
+            |> Seq.rev
+            |> Seq.map (HtmlNode.attributeValue "href" >> resolveUrl url)
+            |> Seq.distinct
+        return urls
+    }
 
 let toHttpRequestMessage (url: string) =
     new HttpRequestMessage(System.Net.Http.HttpMethod.Get, url)
 
 let private extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
-    querySelectorAll html cssQuery
-    |> Option.map (Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url >> toHttpRequestMessage))
+    opt {
+        let! nodes = querySelectorAll html cssQuery
+        return Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url >> toHttpRequestMessage) nodes
+    }
 
 let private providers = [
     {
@@ -99,22 +95,26 @@ let private providers = [
     {
         Pattern = Regex("https://manhwa18\.com/.*")
         TitleExtractor = fun (url: string) (html: HtmlDocument) ->
-            let textInfo = CultureInfo("en-US", false).TextInfo
-            querySelector html ".manga-info h1"
-            |> Option.map (fun node ->
-                node
-                |> HtmlNode.directInnerText
-                |> fun s -> s.ToLowerInvariant()
-                |> textInfo.ToTitleCase
-            )
+            opt {
+                let textInfo = CultureInfo("en-US", false).TextInfo
+                let! node = querySelector html ".manga-info h1"
+                let title =
+                    node
+                    |> HtmlNode.directInnerText
+                    |> fun s -> s.ToLowerInvariant()
+                    |> textInfo.ToTitleCase
+                return title
+            }
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
-            querySelectorAll html ".chapter"
-            |> Option.map (fun chapters ->
-                chapters
-                |> Seq.rev
-                |> Seq.map (HtmlNode.attributeValue "href" >> resolveUrl url)
-                |> Seq.distinct
-            )
+            opt {
+                let! chapters = querySelectorAll html ".chapter"
+                let urls =
+                    chapters
+                    |> Seq.rev
+                    |> Seq.map (HtmlNode.attributeValue "href" >> resolveUrl url)
+                    |> Seq.distinct
+                return urls
+            }
         ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
         ImageExtractor = extractImageUrls ".chapter-img"
     }
@@ -123,15 +123,13 @@ let private providers = [
         Pattern = Regex("https://mangadex\.org/title/.*")
         TitleExtractor = cssAndRegex "title" (Regex("(.*) \(Title\) - MangaDex"))
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
-            let mangaId = regexMatch (Regex("https://mangadex\.org/title/(\d+)/.*")) url
-            mangaId
-            |> Option.map (fun mi ->
-                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=manga" mi
-                let json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
-                json
-                |> Option.map (fun j ->
-                    let doc = JsonDocument.Parse(j).RootElement
-                    let chapters = doc.GetProperty("chapter").EnumerateObject()
+            opt {
+                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(\d+)/.*")) url
+                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=manga" mangaId
+                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let doc = JsonDocument.Parse(json).RootElement
+                let chapters = doc.GetProperty("chapter").EnumerateObject()
+                let urls =
                     chapters
                     |> Seq.filter (fun c ->
                         let langCode = c.Value.GetProperty("lang_code").GetString()
@@ -140,115 +138,101 @@ let private providers = [
                     )
                     |> Seq.map (fun c -> sprintf "https://mangadex.org/chapter/%s" c.Name)
                     |> Seq.rev
-                )
-            )
-            |> Option.flatten
+                return urls
+            }
         ChapterTitleExtractor = fun (url: string) (html: HtmlDocument) ->
-            let chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
-            chapterId
-            |> Option.map(fun ci ->
-                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=chapter" ci
-                let json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
-                json
-                |> Option.map (fun j ->
-                    let doc = JsonDocument.Parse(j).RootElement
-                    doc.GetProperty("chapter").GetString()
-                )
-            )
-            |> Option.flatten
+            opt {
+                let! chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
+                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=chapter" chapterId
+                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let doc = JsonDocument.Parse(json).RootElement
+                return doc.GetProperty("chapter").GetString()
+            }
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
-            let chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
-            chapterId
-            |> Option.map(fun ci ->
-                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=chapter" ci
-                let json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
-                json
-                |> Option.map (fun j ->
-                    let doc = JsonDocument.Parse(j).RootElement
-                    let server = doc.GetProperty("server").GetString()
-                    let hash = doc.GetProperty("hash").GetString()
-                    let pages =
-                        doc.GetProperty("page_array").EnumerateArray()
-                        |> Seq.map (fun el -> el.GetString())
+            opt {
+                let! chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
+                let apiUrl = sprintf "https://mangadex.org/api/?id=%s&type=chapter" chapterId
+                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let doc = JsonDocument.Parse(json).RootElement
+                let server = doc.GetProperty("server").GetString()
+                let hash = doc.GetProperty("hash").GetString()
+                let pages =
+                    doc.GetProperty("page_array").EnumerateArray()
+                    |> Seq.map (fun el -> el.GetString())
+                let reqs =
                     pages
                     |> Seq.map (fun p -> Path.Combine(server, hash, p) |> toHttpRequestMessage)
-                )
-            )
-            |> Option.flatten
+                return reqs
+            }
     }
 
     {
         Pattern = Regex("https://www\.webtoons\.com/en/.*/.*/list\?.*")
         TitleExtractor = cssAndRegex "title" (Regex("(.*) \| WEBTOON"))
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
-            let rec getLastPageGroup urlArg htmlArg =
-                match querySelector htmlArg "a.pg_next" with
-                | Some el ->
-                    let nextPageGroupHref =
-                        HtmlNode.attributeValue "href" el
-                        |> resolveUrl urlArg
-                    retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync nextPageGroupHref)
-                    |> Async.RunSynchronously
-                    |> Option.map (fun h -> getLastPageGroup nextPageGroupHref h)
-                    |> Option.flatten
-                | None -> Some (urlArg, htmlArg)
-            let lastPageHref =
-                getLastPageGroup url html
-                |> Option.map (fun (url, html) ->
-                    querySelectorAll html ".paginate a"
-                    |> Option.map (List.last >> HtmlNode.attributeValue "href" >> resolveUrl url)
-                )
-                |> Option.flatten
-            let lastPageNumber =
-                lastPageHref
-                |> Option.map (fun href ->
-                    match Url(href).QueryParams.["page"] |> string with
+            opt {
+                let rec getLastPageGroup urlArg htmlArg =
+                    match querySelector htmlArg "a.pg_next" with
+                    | Some el ->
+                        let nextPageGroupHref =
+                            HtmlNode.attributeValue "href" el
+                            |> resolveUrl urlArg
+                        retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync nextPageGroupHref)
+                        |> Async.RunSynchronously
+                        |> Option.map (fun h -> getLastPageGroup nextPageGroupHref h)
+                        |> Option.flatten
+                    | None -> Some (urlArg, htmlArg)
+                let! url, html = getLastPageGroup url html
+                let! paginateLinks = querySelectorAll html ".paginate a"
+                let lastPageHref =
+                    paginateLinks
+                    |> List.last
+                    |> HtmlNode.attributeValue "href"
+                    |> resolveUrl url
+                let lastPageNumber =
+                    match Url(lastPageHref).QueryParams.["page"] |> string with
                     | "" -> 1
                     | n -> int n
-                )
-            let pageUrls =
-                lastPageNumber
-                |> Option.map (fun n ->
-                    [ 1 .. n ]
+                let pageUrls =
+                    [ 1 .. lastPageNumber ]
                     |> List.map (fun i -> url.SetQueryParam("page", i))
-                )
-            let lift l =
-                if Seq.contains None l then None
-                else Some (Seq.map Option.get l)
-            let chapterUrlGroups =
-                pageUrls
-                |> Option.map (fun pages ->
-                    pages
+                let lift l =
+                    if Seq.contains None l then None
+                    else Some (Seq.map Option.get l)
+                let! chapterUrlGroups =
+                    pageUrls
                     |> List.toSeq
                     |> Seq.map (fun page ->
-                        let html =
-                            retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync (page.ToString()))
-                            |> Async.RunSynchronously
-                        let chapterUrls =
-                            querySelectorAll html.Value "#_listUl a"
-                            |> Option.map (fun chapters ->
-                                chapters
-                                |> Seq.map (HtmlNode.attributeValue "href")
-                            )
-                        chapterUrls
+                        opt {
+                            let! html =
+                                retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync (page.ToString()))
+                                |> Async.RunSynchronously
+                            let! chapterLinks = querySelectorAll html "#_listUl a"
+                            return Seq.map (HtmlNode.attributeValue "href") chapterLinks
+                        }
                     )
-                )
-            chapterUrlGroups
-            |> Option.map (lift >> Option.map (Seq.collect id >> Seq.rev))
-            |> Option.flatten
+                    |> lift
+                let chapterUrls =
+                    chapterUrlGroups
+                    |> Seq.collect id
+                    |> Seq.rev
+                return chapterUrls
+            }
         ChapterTitleExtractor = urlMatch (Regex("episode_no=(\d+)"))
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
-            querySelectorAll html "#_imageList img"
-            |> Option.map (fun imgs ->
-                imgs
-                |> List.map (fun img ->
-                    let reqUrl = HtmlNode.attributeValue "data-url" img
-                    let req = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, reqUrl)
-                    req.Headers.Referrer <- Uri(url)
-                    req
-                )
-                |> List.toSeq
-            )
+            opt {
+                let! imgs = querySelectorAll html "#_imageList img"
+                let urls =
+                    imgs
+                    |> List.map (fun img ->
+                        let reqUrl = HtmlNode.attributeValue "data-url" img
+                        let req = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, reqUrl)
+                        req.Headers.Referrer <- Uri(url)
+                        req
+                    )
+                    |> List.toSeq
+                return urls
+            }
     }
 ]
 

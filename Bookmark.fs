@@ -4,6 +4,7 @@ open MangaSharp
 open MangaSharp.Util
 open System.IO
 open System.Web
+open Giraffe.ComputationExpressions
 
 let private tryParse (mangaTitle: string) (bookmark: string) =
     match bookmark.Split("/") with
@@ -29,21 +30,14 @@ let private tryParse (mangaTitle: string) (bookmark: string) =
         None
 
 let tryReadBookmark (mangaTitle: string) =
-    let bookmarkPath = Path.Combine(mangaData, mangaTitle, "bookmark")
-    if File.Exists(bookmarkPath) then
-        bookmarkPath
-        |> File.tryReadAllText
-        |> Option.map (fun bookmark ->
+    opt {
+        let bookmarkPath = Path.Combine(mangaData, mangaTitle, "bookmark")
+        if File.Exists(bookmarkPath) then
+            let! bookmark = File.tryReadAllText bookmarkPath
             match tryParse mangaTitle bookmark with
-            | Some bookmark ->
-                Some bookmark
-            | None ->
-                printfn "Error parsing %s." bookmarkPath
-                None             
-        )
-        |> Option.flatten
-    else
-        None
+            | Some bookmark -> return bookmark
+            | None -> printfn "Error parsing %s." bookmarkPath
+    }
 
 let getChapter (bookmark: Bookmark) =
     match bookmark with

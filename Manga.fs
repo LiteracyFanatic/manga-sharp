@@ -8,6 +8,7 @@ open Microsoft.FSharpLu.Json
 open FSharp.Data
 open MangaSharp
 open MangaSharp.Util
+open Giraffe.ComputationExpressions
 
 type private MangaInfo = {
     Title: string
@@ -161,37 +162,35 @@ let download (manga: MangaSource) =
     | None -> false
 
 let private fromDir (dir: string) =
-    let title = Path.GetFileName(dir)
-    let chapterStatuses = getChapterStatuses title
-    let chapters =
-        chapterStatuses
-        |> List.filter (fun c -> c.DownloadStatus = Downloaded)
-        |> List.choose (fun c -> Chapter.tryFromDir (Path.Combine(dir, c.Title.Value)))
-        |> NonEmptyList.tryCreate
-    let indexUrl = File.tryReadAllText (Path.Combine(dir, "source"))
-    let direction =
-        File.tryReadAllText (Path.Combine(dir, "direction"))
-        |> Option.map Direction.tryParse
-        |> Option.flatten
-    let provider =
-        indexUrl
-        |> Option.map Provider.tryFromTable
-        |> Option.flatten
-    match chapters, indexUrl, direction, provider with
-    | Some chapters, Some indexUrl, Some direction, Some provider ->
-        let source = {
-            Url = indexUrl
-            Direction = direction
-            Provider = provider
+    let manga =
+        opt {
+            let title = Path.GetFileName(dir)
+            let chapterStatuses = getChapterStatuses title
+            let! chapters =
+                chapterStatuses
+                |> List.filter (fun c -> c.DownloadStatus = Downloaded)
+                |> List.choose (fun c -> Chapter.tryFromDir (Path.Combine(dir, c.Title.Value)))
+                |> NonEmptyList.tryCreate
+            let! indexUrl = File.tryReadAllText (Path.Combine(dir, "source"))
+            let! directionText = File.tryReadAllText (Path.Combine(dir, "direction"))
+            let! direction = Direction.tryParse directionText
+            let! provider = Provider.tryFromTable indexUrl
+            let source = {
+                Url = indexUrl
+                Direction = direction
+                Provider = provider
+            }
+            let manga = {
+                Title = title
+                Chapters = chapters
+                Bookmark = Bookmark.tryReadBookmark title
+                Source = source
+            }
+            return manga
         }
-        let manga = {
-            Title = title
-            Chapters = chapters
-            Bookmark = Bookmark.tryReadBookmark title
-            Source = source
-        }
-        Some manga
-    | _ ->
+    match manga with
+    | Some m -> Some m
+    | None ->
         printfn "Could not process %s." dir
         None
 
