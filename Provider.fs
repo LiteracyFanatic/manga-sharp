@@ -78,10 +78,10 @@ let private extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlD
 let private providers = [
     {
         Pattern = Regex("https://manganelo\.com/manga/.*")
-        TitleExtractor = cssAndRegex "title" (Regex("Read (.*) Manga Online For Free"))
-        ChapterUrlsExtractor = extractChapterUrls ".chapter-list .row a"
+        TitleExtractor = cssAndRegex "title" (Regex("(.*) Manga Online Free - Manganelo"))
+        ChapterUrlsExtractor = extractChapterUrls ".chapter-name"
         ChapterTitleExtractor = urlMatch (Regex("chapter_(.*)"))
-        ImageExtractor = extractImageUrls "#vungdoc img"
+        ImageExtractor = extractImageUrls ".container-chapter-reader img"
     }
 
     {
