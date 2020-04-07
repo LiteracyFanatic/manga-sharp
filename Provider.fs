@@ -66,13 +66,13 @@ let private extractChapterUrls (cssQuery: string) = fun (url: string) (html: Htm
         return urls
     }
 
-let toHttpRequestMessage (url: string) =
-    new HttpRequestMessage(System.Net.Http.HttpMethod.Get, url)
+let toHttpRequestMessageFunc (url: string) =
+    fun () -> new HttpRequestMessage(System.Net.Http.HttpMethod.Get, url)
 
 let private extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
     opt {
         let! nodes = querySelectorAll html cssQuery
-        return Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url >> toHttpRequestMessage) nodes
+        return Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url >> toHttpRequestMessageFunc) nodes
     }
 
 let private providers = [
@@ -161,7 +161,7 @@ let private providers = [
                     |> Seq.map (fun el -> el.GetString())
                 let reqs =
                     pages
-                    |> Seq.map (fun p -> Path.Combine(server, hash, p) |> toHttpRequestMessage)
+                    |> Seq.map (fun p -> Path.Combine(server, hash, p) |> toHttpRequestMessageFunc)
                 return reqs
             }
     }
@@ -226,9 +226,10 @@ let private providers = [
                     imgs
                     |> List.map (fun img ->
                         let reqUrl = HtmlNode.attributeValue "data-url" img
-                        let req = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, reqUrl)
-                        req.Headers.Referrer <- Uri(url)
-                        req
+                        fun () ->
+                            let req = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, reqUrl)
+                            req.Headers.Referrer <- Uri(url)
+                            req
                     )
                     |> List.toSeq
                 return urls

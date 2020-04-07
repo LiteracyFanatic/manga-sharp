@@ -17,7 +17,7 @@ type private MangaInfo = {
 
 type private ChapterInfo = {
     Title: string
-    ImageRequests: HttpRequestMessage seq
+    ImageRequests: (unit -> HttpRequestMessage) seq
 }
 
 let private tryGetMangaInfo (manga: MangaSource) =
@@ -62,13 +62,17 @@ let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
     let folder = Path.Combine(mangaData, mangaInfo.Title, chapterInfo.Title)
     Directory.CreateDirectory(folder) |> ignore
     chapterInfo.ImageRequests
-    |> Seq.mapi (fun i req ->
+    |> Seq.mapi (fun i reqFunc ->
         async {
-            let ext = Path.GetExtension(req.RequestUri.LocalPath)
-            let path = Path.ChangeExtension(Path.Combine(folder, sprintf "%03i" (i + 1)), ext)
-            match! retryAsync 3 1000 (fun () -> downloadFileAsync path req) with
+            let! res = retryAsync 3 1000 (fun () ->
+                let req = reqFunc()
+                let ext = Path.GetExtension(req.RequestUri.LocalPath)
+                let path = Path.ChangeExtension(Path.Combine(folder, sprintf "%03i" (i + 1)), ext)
+                downloadFileAsync path req
+            )
+            match res with
             | Some _ -> ()
-            | None -> printfn "Could not download %s." (req.RequestUri.ToString())
+            | None -> printfn "Could not download %s." (reqFunc().RequestUri.ToString())
         }
     )
     |> Async.Sequential

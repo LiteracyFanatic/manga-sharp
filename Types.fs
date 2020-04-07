@@ -21,7 +21,7 @@ type Provider = {
     TitleExtractor: string -> HtmlDocument -> string option
     ChapterUrlsExtractor: string -> HtmlDocument -> string seq option
     ChapterTitleExtractor: string -> HtmlDocument -> string option
-    ImageExtractor: string -> HtmlDocument -> HttpRequestMessage seq option
+    ImageExtractor: string -> HtmlDocument -> (unit -> HttpRequestMessage) seq option
 }
 
 type MangaSource = {
