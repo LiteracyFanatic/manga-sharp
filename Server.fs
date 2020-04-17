@@ -89,7 +89,6 @@ let private index (allManga: StoredManga list) (recentManga: StoredManga list) =
             title [] [ encodedText "MangaSharp - Index" ]
             link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
             link [ attr "rel" "stylesheet"; attr "href" "/index.css" ]
-            link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
         ]
         body [] [
             mangaTable recentManga "Recent"
@@ -116,7 +115,6 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
             meta [ attr "charset" "utf-8" ]
             title [] [ encodedText (sprintf "MangaSharp - %s - %s" manga.Title chapter.Title) ]
             link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
-            link [ attr "rel" "shortcut icon"; attr  "href" "#" ]
             match manga.Source.Direction with
             | Horizontal ->
                 link [ attr "rel" "stylesheet"; attr "href" "/horizontal.css" ]
