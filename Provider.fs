@@ -81,7 +81,21 @@ let private providers = [
         TitleExtractor = cssAndRegex "title" (Regex("(.*) Manga Online Free - Manganelo"))
         ChapterUrlsExtractor = extractChapterUrls ".chapter-name"
         ChapterTitleExtractor = urlMatch (Regex("chapter_(.*)"))
-        ImageExtractor = extractImageUrls ".container-chapter-reader img"
+        ImageExtractor = fun (url: string) (html: HtmlDocument) ->
+            opt {
+                let! imgs = querySelectorAll html ".container-chapter-reader img"
+                let urls =
+                    imgs
+                    |> List.map (fun img ->
+                        let reqUrl = HtmlNode.attributeValue "src" img
+                        fun () ->
+                            let req = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, reqUrl)
+                            req.Headers.Referrer <- Uri(url)
+                            req
+                    )
+                    |> List.toSeq
+                return urls
+            }
     }
 
     {
