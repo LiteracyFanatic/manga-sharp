@@ -5,6 +5,7 @@ body {
 img {
     margin: auto;
     display: block;
+    max-width: 800px;
 }
 
 #select-container {
