@@ -45,7 +45,7 @@ _manga_completions() {
                 update)
                     case "$current" in
                         --*)
-                            _manga_complete_words '--manga --all --help'
+                            _manga_complete_words '--title --all --help'
                             ;;
                     esac
                     ;;
@@ -64,9 +64,6 @@ _manga_completions() {
             case "$prev" in
                 --direction)
                     _manga_complete_words "horizontal vertical"
-                    ;;
-                --manga)
-                    _manga_complete_lines "$(_manga_ls)"
                     ;;
                 --title)
                     _manga_complete_lines "$(_manga_ls)"

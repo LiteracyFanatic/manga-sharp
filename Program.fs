@@ -12,16 +12,16 @@ type DownloadArgs =
             | Direction _ -> "the orientation of the manga."
 
 type UpdateArgs =
-    | Manga of string
+    | Title of string
     | All
     interface IArgParserTemplate with
         member this.Usage =
             match this with
-            | Manga _ -> "the manga to update."
+            | Title _ -> "the manga to update."
             | All -> "update all manga."
 
 type ReadArgs =
-    | Title of title: string
+    | Title of string
     | Last
     | Port of int
     | No_Open
@@ -79,9 +79,9 @@ let main argv =
                     |> List.map (fun m -> Manga.download m.Source)
                     |> List.contains true
                 else
-                    let manga = updateArgs.GetResult(Manga)
+                    let title = updateArgs.GetResult(UpdateArgs.Title)
                     let { Source = source } =
-                        List.find (fun m -> m.Title = manga) (Manga.getStoredManga ())
+                        List.find (fun m -> m.Title = title) (Manga.getStoredManga ())
                     Manga.download source
             if not updated then
                 printfn "No updates were found."
