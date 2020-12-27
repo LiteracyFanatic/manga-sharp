@@ -1,0 +1,79 @@
+# shellcheck shell=bash
+
+_manga_commands=(download update read ls)
+
+_manga_ls() {
+    manga ls | sed 's/\([^,]\+\),.*/\1/; s/ /\\\\ /g'
+}
+
+_manga_complete_words() {
+    while read -r item; do
+        COMPREPLY+=("$item")
+    done < <(compgen -W "$1" -- "${COMP_WORDS[$COMP_CWORD]}")
+}
+
+_manga_complete_lines() {
+    while read -r item; do
+        COMPREPLY+=("$item")
+    done < <(IFS=$'\n' compgen -W "$1" -- "${COMP_WORDS[$COMP_CWORD]}")
+}
+
+_manga_completions() {
+    # echo -en "\nn = $COMP_CWORD"
+    current="${COMP_WORDS[$COMP_CWORD]}"
+    prev="${COMP_WORDS[$COMP_CWORD-1]}"
+    case "$COMP_CWORD" in
+        1)
+            case "${COMP_WORDS[$COMP_CWORD]}" in
+                --*)
+                    _manga_complete_words '--version --help'
+                    ;;
+                *)
+                    _manga_complete_words "${_manga_commands[*]}"
+                    ;;
+            esac
+            ;;
+        2)
+            case "$prev" in
+                download)
+                    case "$current" in
+                        --*)
+                            _manga_complete_words '--direction --help'
+                            ;;
+                    esac
+                    ;;
+                update)
+                    case "$current" in
+                        --*)
+                            _manga_complete_words '--manga --all --help'
+                            ;;
+                    esac
+                    ;;
+                read)
+                    case "$current" in
+                        --*)
+                            _manga_complete_words '--title --last --port --no-open --help'
+                            ;;
+                    esac
+                    ;;
+                ls)
+                    ;;
+            esac
+            ;;
+        3)
+            case "$prev" in
+                --direction)
+                    _manga_complete_words "horizontal vertical"
+                    ;;
+                --manga)
+                    _manga_complete_lines "$(_manga_ls)"
+                    ;;
+                --title)
+                    _manga_complete_lines "$(_manga_ls)"
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+complete -F _manga_completions manga
