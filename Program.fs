@@ -72,11 +72,13 @@ let main argv =
             | None ->
                 ()
         | Update updateArgs ->
-            printfn "Checking for updates..."
             let updated =
                 if updateArgs.Contains(All) then
                     Manga.getStoredManga ()
-                    |> List.map (fun m -> Manga.download m.Source)
+                    |> List.map (fun m ->
+                        printfn "Checking %s for updates..." m.Title
+                        Manga.download m.Source
+                    )
                     |> List.contains true
                 else
                     let title = updateArgs.GetResult(UpdateArgs.Title)
