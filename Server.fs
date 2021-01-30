@@ -171,7 +171,10 @@ let private setBookmark (mangaTitle: string) =
 let private webApp (port: int) =
     choose [
         GET >=> choose [
-            route "/" >=> warbler (fun _ -> index (Manga.getStoredManga ()) (Manga.getRecent ()))
+            route "/" >=> warbler (fun _ ->
+                let storedManga = Manga.getStoredManga ()
+                index storedManga (Manga.getRecent storedManga)
+            )
             subRoutef "/manga/%s/%s" (fun (m, c) ->
                 let mangaTitle = HttpUtility.UrlDecode m
                 choose [

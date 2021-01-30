@@ -90,17 +90,18 @@ let main argv =
         | Read readArgs ->
             let port = readArgs.TryGetResult(Port)
             let openInBrowser = not (readArgs.Contains(No_Open))
+            let storedManga = Manga.getStoredManga ()
             if readArgs.Contains(Last) then
                 if readArgs.Contains(Title) then
                     printfn "Cannot specify --last and a manga title at the same time."
                 else
-                    match Manga.getRecent () with
+                    match Manga.getRecent storedManga with
                     | h :: t -> Server.read port openInBrowser (Some h)
                     | [] -> ()
             else
                 match readArgs.TryGetResult(Title) with
                 | Some t ->
-                    match Manga.tryFromTitle t with
+                    match Manga.tryFromTitle storedManga t with
                     | Some m -> Server.read port openInBrowser (Some m)
                     | None -> ()
                 | None -> Server.read port openInBrowser None

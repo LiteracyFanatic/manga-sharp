@@ -216,20 +216,20 @@ let tryNextChapter (manga: StoredManga) (chapter: Chapter) =
     let i = NonEmptyList.findIndex ((=) chapter) manga.Chapters
     NonEmptyList.tryItem (i + 1) manga.Chapters
 
-let tryFromTitle (title: string) =
-    match getStoredManga () |> List.tryFind (fun m -> m.Title = title) with
+let tryFromTitle (storedManga: StoredManga list) (title: string) =
+    match storedManga |> List.tryFind (fun m -> m.Title = title) with
     | Some manga ->
         Some manga
     | None ->
         printfn "Couldn't find a manga titled %s." title
         None
 
-let getRecent () =
+let getRecent (storedManga: StoredManga list) =
     let recentMangaPath = Path.Combine(mangaData, "recent-manga")
     if File.Exists(recentMangaPath) then
         File.ReadAllLines(recentMangaPath)
         |> Seq.toList
-        |> List.map tryFromTitle
+        |> List.map (tryFromTitle storedManga)
         |> List.choose id
         |> List.truncate 5
     else
