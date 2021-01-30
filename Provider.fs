@@ -204,7 +204,7 @@ let private providers = [
                     |> HtmlNode.attributeValue "href"
                     |> resolveUrl url
                 let lastPageNumber =
-                    match Url(lastPageHref).QueryParams.["page"] |> string with
+                    match Url(lastPageHref).QueryParams.FirstOrDefault("page") |> string with
                     | "" -> 1
                     | n -> int n
                 let pageUrls =
