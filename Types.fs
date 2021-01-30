@@ -40,9 +40,38 @@ type Chapter = {
     Pages: NonEmptyList<Page>
 }
 
+type DownloadStatus =
+    | NotDownloaded
+    | Downloaded
+    | Ignored
+
+type ChapterStatus = {
+    Url: string
+    Title: string option
+    DownloadStatus: DownloadStatus
+}
+
 type Bookmark =
-    | HorizontalBookmark of Chapter * Page
-    | VerticalBookmark of Chapter
+    | HorizontalBookmark of chapter: string * page: string
+    | VerticalBookmark of chapter: string
+
+type MangaInfo = {
+    Title: string
+    ChapterUrls: string seq
+}
+
+type ChapterInfo = {
+    Title: string
+    ImageRequests: (unit -> HttpRequestMessage) seq
+}
+
+type MangaListing = {
+    Title: string
+    Bookmark: Bookmark option
+    Source: MangaSource
+    ChapterIndex: int
+    NumberOfChapters: int
+}
 
 type StoredManga = {
     Title: string

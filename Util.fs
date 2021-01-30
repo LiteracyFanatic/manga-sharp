@@ -105,6 +105,9 @@ module NonEmptyList =
         | [] -> None
         | _ -> Some { List = list }
 
+    let create list =
+        { List = list }
+
     let findIndex f { List = list } = List.findIndex f list
 
     let tryItem a { List = list } = List.tryItem a list

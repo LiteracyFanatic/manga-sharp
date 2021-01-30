@@ -258,3 +258,6 @@ let tryFromTable (url: string) =
     | None ->
         printfn "Could not find a provider that matched %s." url
         None
+
+let fromTable (url: string) =
+    List.find (fun p -> p.Pattern.IsMatch(url)) providers

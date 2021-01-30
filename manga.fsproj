@@ -11,8 +11,10 @@
     <Compile Include="Direction.fs" />
     <Compile Include="Page.fs" />
     <Compile Include="Chapter.fs" />
-    <Compile Include="Bookmark.fs" />
     <Compile Include="Provider.fs" />
+    <Compile Include="ChapterStatus.fs" />
+    <Compile Include="Bookmark.fs" />
+    <Compile Include="MangaListing.fs" />
     <Compile Include="Manga.fs" />
     <Compile Include="Server.fs" />
     <Compile Include="Program.fs" />

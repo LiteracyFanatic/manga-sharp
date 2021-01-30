@@ -1,24 +1,10 @@
 module MangaSharp.Manga
 
 open System.IO
-open System.Net.Http
 open System.Web
-open Newtonsoft.Json
-open Microsoft.FSharpLu.Json
 open FSharp.Data
 open MangaSharp
 open MangaSharp.Util
-open Giraffe.ComputationExpressions
-
-type private MangaInfo = {
-    Title: string
-    ChapterUrls: string seq
-}
-
-type private ChapterInfo = {
-    Title: string
-    ImageRequests: (unit -> HttpRequestMessage) seq
-}
 
 let private tryGetMangaInfo (manga: MangaSource) =
     let html =
@@ -37,7 +23,7 @@ let private tryGetMangaInfo (manga: MangaSource) =
             if chapterUrls.IsNone then
                 printfn "Could not extract chapter URLs from %s." manga.Url
             None
-    | None ->  None
+    | None -> None
 
 let private tryGetChapterInfo (manga: MangaSource) (url: string) =
     let html =
@@ -79,48 +65,6 @@ let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
     |> Async.Ignore
     |> Async.RunSynchronously
 
-type DownloadStatus =
-    | NotDownloaded
-    | Downloaded
-    | Ignored
-
-type ChapterStatus = {
-    Url: string
-    Title: string option
-    DownloadStatus: DownloadStatus
-}
-
-let private opts = JsonSerializerSettings()
-opts.Formatting <- Formatting.Indented
-opts.Converters.Add(CompactUnionJsonConverter())
-
-let private getChapterStatuses (mangaTitle: string) =
-    let chaptersPath = Path.Combine(mangaData, mangaTitle, "chapters")
-    if File.Exists(chaptersPath) then
-        let json = File.ReadAllText(chaptersPath)
-        JsonConvert.DeserializeObject<ChapterStatus list>(json, opts)
-    else
-        []
-
-let private mergeChapterStatuses (mangaInfo: MangaInfo) (urls: string list) (chapters: ChapterStatus list) =
-    let existingChaptersSet = set (List.map (fun c -> c.Url) chapters)
-    let chapterUrlsSet = set urls
-    if not (existingChaptersSet.IsSubsetOf chapterUrlsSet) then
-        printfn "WARNING: There are previously downloaded chapters for %s from URLs not listed by the current source. This may indicate a change in page structure."
-            mangaInfo.Title
-    urls
-    |> List.map (fun url ->
-        let title, downloadStatus =
-            match List.tryFind (fun chapter -> chapter.Url = url) chapters with
-            | Some chapter -> chapter.Title, chapter.DownloadStatus
-            | None -> None, NotDownloaded
-        {
-            Url = url
-            Title = title
-            DownloadStatus = downloadStatus
-        }
-    )
-
 let private downloadChapters (manga: MangaSource) (mangaInfo: MangaInfo) (chapters: ChapterStatus list) =
     let chaptersPath = Path.Combine(mangaData, mangaInfo.Title, "chapters")
     let n =
@@ -139,7 +83,7 @@ let private downloadChapters (manga: MangaSource) (mangaInfo: MangaInfo) (chapte
                         |> List.mapAt i (fun chapter ->
                             { chapter with Title = Some chapterInfo.Title; DownloadStatus = Downloaded })
                     | None -> chapters
-                File.WriteAllText(chaptersPath, JsonConvert.SerializeObject(chapters', opts))
+                ChapterStatus.save chaptersPath chapters'
                 loop (i + 1) (count + 1) chapters'
             else
                 loop (i + 1) count chapters
@@ -156,8 +100,8 @@ let download (manga: MangaSource) =
     match tryGetMangaInfo manga with
     | Some mangaInfo ->
         createMangaDir mangaInfo.Title manga
-        let chapterInfo = getChapterStatuses mangaInfo.Title
-        let chapters = mergeChapterStatuses mangaInfo (List.ofSeq mangaInfo.ChapterUrls) chapterInfo
+        let chapterInfo = ChapterStatus.get mangaInfo.Title
+        let chapters = ChapterStatus.merge mangaInfo (List.ofSeq mangaInfo.ChapterUrls) chapterInfo
         if List.exists (fun chapter -> chapter.DownloadStatus = NotDownloaded) chapters then
             downloadChapters manga mangaInfo chapters
             true
@@ -166,41 +110,37 @@ let download (manga: MangaSource) =
     | None -> false
 
 let private fromDir (dir: string) =
-    let manga =
-        opt {
-            let title = Path.GetFileName(dir)
-            let chapterStatuses = getChapterStatuses title
-            let! chapters =
-                chapterStatuses
-                |> List.filter (fun c -> c.DownloadStatus = Downloaded)
-                |> List.choose (fun c -> Chapter.tryFromDir (Path.Combine(dir, c.Title.Value)))
-                |> NonEmptyList.tryCreate
-            let! indexUrl = File.tryReadAllText (Path.Combine(dir, "source"))
-            let! directionText = File.tryReadAllText (Path.Combine(dir, "direction"))
-            let! direction = Direction.tryParse directionText
-            let! provider = Provider.tryFromTable indexUrl
-            let source = {
-                Url = indexUrl
-                Direction = direction
-                Provider = provider
-            }
-            let manga = {
-                Title = title
-                Chapters = chapters
-                Bookmark = Bookmark.tryReadBookmark title
-                Source = source
-            }
-            return manga
+    try
+        let title = Path.GetFileName(dir)
+        let chapterStatuses = ChapterStatus.get title
+        let chapters =
+            chapterStatuses
+            |> List.filter (fun c -> c.DownloadStatus = Downloaded)
+            |> List.map (fun c -> Chapter.fromDir (Path.Combine(dir, c.Title.Value)))
+            |> NonEmptyList.create
+        let indexUrl = File.ReadAllText (Path.Combine(dir, "source"))
+        let directionText = File.ReadAllText(Path.Combine(dir, "direction")).Trim()
+        let direction = Direction.parse directionText
+        let provider = Provider.fromTable indexUrl
+        let source = {
+            Url = indexUrl
+            Direction = direction
+            Provider = provider
         }
-    match manga with
-    | Some m -> Some m
-    | None ->
-        printfn "Could not process %s." dir
-        None
+        let manga = {
+            Title = title
+            Chapters = chapters
+            Bookmark = Bookmark.tryReadBookmark title
+            Source = source
+        }
+        manga
+    with
+    | e ->
+        failwithf "Could not process %s." dir
 
 let getStoredManga () =
     Directory.GetDirectories(mangaData)
-    |> Seq.choose fromDir
+    |> Seq.map fromDir
     |> Seq.sortBy (fun m -> m.Title)
     |> Seq.toList
 

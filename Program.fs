@@ -74,7 +74,7 @@ let main argv =
         | Update updateArgs ->
             let updated =
                 if updateArgs.Contains(All) then
-                    Manga.getStoredManga ()
+                    MangaListing.getAll ()
                     |> List.map (fun m ->
                         printfn "Checking %s for updates..." m.Title
                         Manga.download m.Source
@@ -82,39 +82,40 @@ let main argv =
                     |> List.contains true
                 else
                     let title = updateArgs.GetResult(UpdateArgs.Title)
-                    let { Source = source } =
-                        List.find (fun m -> m.Title = title) (Manga.getStoredManga ())
-                    Manga.download source
+                    let manga =
+                        MangaListing.getAll ()
+                        |> List.find (fun m -> m.Title = title)
+                    Manga.download manga.Source
             if not updated then
                 printfn "No updates were found."
         | Read readArgs ->
             let port = readArgs.TryGetResult(Port)
             let openInBrowser = not (readArgs.Contains(No_Open))
-            let storedManga = Manga.getStoredManga ()
+            let mangaListing = MangaListing.getAll ()
             if readArgs.Contains(Last) then
                 if readArgs.Contains(Title) then
                     printfn "Cannot specify --last and a manga title at the same time."
                 else
-                    match Manga.getRecent storedManga with
+                    match MangaListing.getRecent mangaListing with
                     | h :: t -> Server.read port openInBrowser (Some h)
                     | [] -> ()
             else
                 match readArgs.TryGetResult(Title) with
                 | Some t ->
-                    match Manga.tryFromTitle storedManga t with
+                    match MangaListing.tryFromTitle t with
                     | Some m -> Server.read port openInBrowser (Some m)
                     | None -> ()
                 | None -> Server.read port openInBrowser None
         | Ls ->
-            Manga.getStoredManga ()
+            MangaListing.getAll ()
             |> List.iter (fun m ->
                 let bookmarkText = 
                     m.Bookmark
                     |> Option.map (fun b ->
-                        let chapterText = (Bookmark.getChapter b).Title
+                        let chapterText = Bookmark.getChapter b
                         let pageText =
                             Bookmark.tryGetPage b
-                            |> Option.map (fun p -> sprintf " Page %s" p.Name)
+                            |> Option.map (fun p -> sprintf " Page %s" p)
                             |> Option.defaultValue ""
                         sprintf "Chapter %s%s" chapterText pageText
                     )
@@ -122,7 +123,7 @@ let main argv =
                 printfn "%s,%A,%i,%s"
                     m.Title
                     m.Source.Direction
-                    (NonEmptyList.length m.Chapters)
+                    m.NumberOfChapters
                     bookmarkText
             )
         | Version ->

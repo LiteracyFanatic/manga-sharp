@@ -51,7 +51,7 @@ let private homeButton =
         ]
     ]
 
-let private mangaTable (storedManga: StoredManga list) (tableTitle: string) =
+let private mangaTable (storedManga: MangaListing list) (tableTitle: string) =
     table [ attr "class" "table is-bordered is-striped" ] [
         yield caption [ _class "is-size-3" ] [ encodedText tableTitle ]
         yield thead [] [
@@ -66,22 +66,18 @@ let private mangaTable (storedManga: StoredManga list) (tableTitle: string) =
             let link =
                 match m.Bookmark with
                 | Some b -> Bookmark.toUrl m.Title b
-                | None -> Manga.firstPage m
-            let selectedChapter =
-                match m.Bookmark with
-                | Some b -> Bookmark.getChapter b
-                | None -> NonEmptyList.head m.Chapters
+                | None -> MangaListing.firstPage m
 
             tr [] [
                 td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
                 td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
                 td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
-                let n = 1 + NonEmptyList.findIndex ((=) selectedChapter) m.Chapters
-                td [ _width "10%" ] [ encodedText (sprintf "%i/%i" n (NonEmptyList.length m.Chapters)) ]
+                let n = 1 + m.ChapterIndex
+                td [ _width "10%" ] [ encodedText (sprintf "%i/%i" n m.NumberOfChapters) ]
             ]
     ]
 
-let private index (allManga: StoredManga list) (recentManga: StoredManga list) =
+let private index (allManga: MangaListing list) (recentManga: MangaListing list) =
     html [] [
         head [] [
             meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
@@ -172,8 +168,8 @@ let private webApp (port: int) =
     choose [
         GET >=> choose [
             route "/" >=> warbler (fun _ ->
-                let storedManga = Manga.getStoredManga ()
-                index storedManga (Manga.getRecent storedManga)
+                let mangaListing = MangaListing.getAll ()
+                index mangaListing (MangaListing.getRecent mangaListing)
             )
             subRoutef "/manga/%s/%s" (fun (m, c) ->
                 let mangaTitle = HttpUtility.UrlDecode m
@@ -225,7 +221,7 @@ let private configureApp (port: int) (env: WebHostBuilderContext) (app : IApplic
 let private configureServices (services : IServiceCollection) =
     services.AddGiraffe() |> ignore
 
-let read (port: int Option) (openInBrowser: bool) (manga: StoredManga option) =
+let read (port: int Option) (openInBrowser: bool) (manga: MangaListing option) =
     let p = Option.defaultValue 8080 port
     let server =
         Host
@@ -246,7 +242,7 @@ let read (port: int Option) (openInBrowser: bool) (manga: StoredManga option) =
             | Some m ->
                 match m.Bookmark with
                 | Some b -> Bookmark.toUrl m.Title b
-                | None -> Manga.firstPage m
+                | None -> MangaListing.firstPage m
             | None -> "/"
         let url = sprintf "http://localhost:%i%s" p urlPath
         openInDefaultApp url
