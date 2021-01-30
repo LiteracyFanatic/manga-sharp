@@ -6,18 +6,18 @@
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Util.fs" />
-    <Compile Include="Types.fs" />
-    <Compile Include="Direction.fs" />
-    <Compile Include="Page.fs" />
-    <Compile Include="Chapter.fs" />
-    <Compile Include="Provider.fs" />
-    <Compile Include="ChapterStatus.fs" />
-    <Compile Include="Bookmark.fs" />
-    <Compile Include="MangaListing.fs" />
-    <Compile Include="Manga.fs" />
-    <Compile Include="Server.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="src/Util.fs" />
+    <Compile Include="src/Types.fs" />
+    <Compile Include="src/Direction.fs" />
+    <Compile Include="src/Page.fs" />
+    <Compile Include="src/Chapter.fs" />
+    <Compile Include="src/Provider.fs" />
+    <Compile Include="src/ChapterStatus.fs" />
+    <Compile Include="src/Bookmark.fs" />
+    <Compile Include="src/MangaListing.fs" />
+    <Compile Include="src/Manga.fs" />
+    <Compile Include="src/Server.fs" />
+    <Compile Include="src/Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="argu" Version="6.1.1" />
