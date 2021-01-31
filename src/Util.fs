@@ -1,8 +1,6 @@
 module MangaSharp.Util
 
 open System
-open System.Collections
-open System.Collections.Generic
 open System.IO
 open System.Net.Http
 open FSharp.Data
@@ -45,22 +43,6 @@ let tryDownloadStringAsync (url: string) =
             return None
     }
 
-module File =
-        
-    let tryReadAllText (path: string) =
-        try
-            Some (File.ReadAllText(path).Trim())
-        with
-        | :? FileNotFoundException ->
-            printfn "Could not find %s." path
-            None
-        | :? UnauthorizedAccessException ->
-            printfn "Could not read %s. Check permissions." path
-            None
-        | :? IOException ->
-            printfn "Could not read %s." path
-            None
-
 module HtmlDocument =
 
     let tryParse (text: string) =
@@ -85,39 +67,3 @@ module HtmlDocument =
 module List =
     let mapAt (i: int) (f: 'a -> 'a) (list: 'a list) =
         List.mapi (fun n x -> if n = i then f x else x) list
-
-type NonEmptyList<'T> =
-    private { List: 'T list }
-
-    interface IEnumerable<'T> with
-        member this.GetEnumerator() =
-            (Seq.ofList this.List).GetEnumerator()
-
-    interface IEnumerable with
-        member this.GetEnumerator() =
-            (Seq.ofList this.List).GetEnumerator() :> IEnumerator
-
-[<RequireQualifiedAccess>]
-module NonEmptyList =
-
-    let tryCreate list =
-        match list with
-        | [] -> None
-        | _ -> Some { List = list }
-
-    let create list =
-        { List = list }
-
-    let findIndex f { List = list } = List.findIndex f list
-
-    let tryItem a { List = list } = List.tryItem a list
-
-    let tryFind f { List = list } = List.tryFind f list
-
-    let find f { List = list } = List.find f list
-
-    let last { List = list } = List.last list
-
-    let head { List = list } = List.head list
-
-    let length { List = list } = List.length list

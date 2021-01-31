@@ -1,7 +1,5 @@
 module MangaSharp.Page
 
-open MangaSharp
-open MangaSharp.Util
 open System.IO
 
 let private fromFileName (file: string) =
@@ -12,21 +10,18 @@ let private fromFileName (file: string) =
 
 let fromDir (dir: string) =
     try
-        let pages =
-            Directory.GetFiles(dir)
-            |> Array.map (fun f -> FileInfo(f).Name)
-            |> Array.sort
-            |> Array.map fromFileName
-            |> Array.toList
-        NonEmptyList.create pages
+        Directory.GetFiles(dir)
+        |> Array.map (fun f -> FileInfo(f).Name)
+        |> Array.sort
+        |> Array.map fromFileName
+        |> Array.toList
     with
     | e ->
         failwithf "%s contains no pages." dir
 
 let private fromChapterTitle (mangaTitle: string) (chapterTitle: string) =
-    let dir = Path.Combine(mangaData, mangaTitle, chapterTitle)
-    fromDir dir
+    fromDir (Path.Combine(mangaData, mangaTitle, chapterTitle))
 
 let fromTitle (mangaTitle: string) (chapterTitle: string) (pageTitle: string) =
     let pages = fromChapterTitle mangaTitle chapterTitle
-    NonEmptyList.find (fun p -> p.Name = pageTitle) pages
+    List.find (fun p -> p.Name = pageTitle) pages

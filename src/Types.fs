@@ -6,7 +6,6 @@ open System.IO
 open System.Text.RegularExpressions
 open System.Net.Http
 open FSharp.Data
-open MangaSharp.Util
 
 type Direction =
     | Horizontal
@@ -37,7 +36,7 @@ type Page = {
 
 type Chapter = {
     Title: string
-    Pages: NonEmptyList<Page>
+    Pages: Page list
 }
 
 type DownloadStatus =
@@ -75,7 +74,7 @@ type MangaListing = {
 
 type StoredManga = {
     Title: string
-    Chapters: NonEmptyList<Chapter>
+    Chapters: Chapter list
     Bookmark: Bookmark option
     Source: MangaSource
 }

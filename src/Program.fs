@@ -1,6 +1,5 @@
 ﻿open MangaSharp
 open Argu
-open MangaSharp.Util
 
 type DownloadArgs =
     | [<Mandatory; MainCommand; ExactlyOnce; Last>] Url of string
@@ -91,12 +90,11 @@ let main argv =
         | Read readArgs ->
             let port = readArgs.TryGetResult(Port)
             let openInBrowser = not (readArgs.Contains(No_Open))
-            let mangaListing = MangaListing.getAll ()
             if readArgs.Contains(Last) then
                 if readArgs.Contains(Title) then
                     printfn "Cannot specify --last and a manga title at the same time."
                 else
-                    match MangaListing.getRecent mangaListing with
+                    match MangaListing.getRecent () with
                     | h :: t -> Server.read port openInBrowser (Some h)
                     | [] -> ()
             else

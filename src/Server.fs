@@ -1,7 +1,5 @@
 module MangaSharp.Server
 
-open MangaSharp
-open MangaSharp.Util
 open System.IO
 open System.Runtime.InteropServices
 open System.Diagnostics
@@ -51,7 +49,7 @@ let private homeButton =
         ]
     ]
 
-let private mangaTable (storedManga: MangaListing list) (tableTitle: string) =
+let private mangaTable (mangaListing: MangaListing list) (tableTitle: string) =
     table [ attr "class" "table is-bordered is-striped" ] [
         yield caption [ _class "is-size-3" ] [ encodedText tableTitle ]
         yield thead [] [
@@ -62,7 +60,7 @@ let private mangaTable (storedManga: MangaListing list) (tableTitle: string) =
                 th [] [ encodedText "Progress" ]
             ]
         ]
-        for m in storedManga ->
+        for m in mangaListing ->
             let link =
                 match m.Bookmark with
                 | Some b -> Bookmark.toUrl m.Title b
@@ -72,8 +70,7 @@ let private mangaTable (storedManga: MangaListing list) (tableTitle: string) =
                 td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
                 td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
                 td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
-                let n = 1 + m.ChapterIndex
-                td [ _width "10%" ] [ encodedText (sprintf "%i/%i" n m.NumberOfChapters) ]
+                td [ _width "10%" ] [ encodedText (sprintf "%i/%i" (1 + m.ChapterIndex) m.NumberOfChapters) ]
             ]
     ]
 
@@ -100,10 +97,10 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
         | Vertical -> ""
     let previousLink =
         Manga.tryPreviousChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (NonEmptyList.last c.Pages)))
+        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (List.last c.Pages)))
     let nextLink =
         Manga.tryNextChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (NonEmptyList.head c.Pages)))
+        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (List.head c.Pages)))
 
     html [] [
         head [] [
@@ -157,7 +154,7 @@ let private setBookmark (mangaTitle: string) =
         task {
             use reader = new StreamReader(ctx.Request.Body)
             let! body = reader.ReadToEndAsync()
-            let manga = List.find (fun sm -> sm.Title = mangaTitle) (Manga.getStoredManga ())
+            let manga = Manga.fromTitle mangaTitle
             let bookmarkPath = Path.Combine(mangaData, manga.Title, "bookmark")
             do! File.WriteAllTextAsync(bookmarkPath, sprintf "%s\n" body)
             return Some ctx
@@ -169,14 +166,14 @@ let private webApp (port: int) =
         GET >=> choose [
             route "/" >=> warbler (fun _ ->
                 let mangaListing = MangaListing.getAll ()
-                index mangaListing (MangaListing.getRecent mangaListing)
+                index mangaListing (MangaListing.getRecent ())
             )
             subRoutef "/manga/%s/%s" (fun (m, c) ->
                 let mangaTitle = HttpUtility.UrlDecode m
                 choose [
                     route "" >=> warbler (fun _ ->
-                        let manga = List.find (fun sm -> sm.Title = mangaTitle) (Manga.getStoredManga ())
-                        let chapter: Chapter = NonEmptyList.find (fun ch -> ch.Title = c) manga.Chapters
+                        let manga = Manga.fromTitle mangaTitle
+                        let chapter =  manga.Chapters |> List.find (fun ch -> ch.Title = c)
                         mangaPage port manga chapter
                     )
                     routef "/%s" (fun p ->

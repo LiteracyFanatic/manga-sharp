@@ -1,7 +1,5 @@
 module MangaSharp.Chapter
 
-open MangaSharp
-open MangaSharp.Util
 open System.IO
 
 let fromDir (dir: string) =
@@ -13,9 +11,9 @@ let fromTitle (mangaTitle: string) (chapterTitle: string) =
     fromDir (Path.Combine(mangaData, mangaTitle, chapterTitle))
 
 let tryPreviousPage (chapter: Chapter) (page: Page) =
-    let i = NonEmptyList.findIndex ((=) page) chapter.Pages
-    NonEmptyList.tryItem (i - 1) chapter.Pages
+    let i = List.findIndex ((=) page) chapter.Pages
+    List.tryItem (i - 1) chapter.Pages
 
 let tryNextPage (chapter: Chapter) (page: Page) =
-    let i = NonEmptyList.findIndex ((=) page) chapter.Pages
-    NonEmptyList.tryItem (i + 1) chapter.Pages
+    let i = List.findIndex ((=) page) chapter.Pages
+    List.tryItem (i + 1) chapter.Pages

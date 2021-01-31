@@ -2,8 +2,6 @@ module MangaSharp.Manga
 
 open System.IO
 open System.Web
-open FSharp.Data
-open MangaSharp
 open MangaSharp.Util
 
 let private tryGetMangaInfo (manga: MangaSource) =
@@ -117,7 +115,6 @@ let private fromDir (dir: string) =
             chapterStatuses
             |> List.filter (fun c -> c.DownloadStatus = Downloaded)
             |> List.map (fun c -> Chapter.fromDir (Path.Combine(dir, c.Title.Value)))
-            |> NonEmptyList.create
         let indexUrl = File.ReadAllText (Path.Combine(dir, "source"))
         let directionText = File.ReadAllText(Path.Combine(dir, "direction")).Trim()
         let direction = Direction.parse directionText
@@ -138,43 +135,20 @@ let private fromDir (dir: string) =
     | e ->
         failwithf "Could not process %s." dir
 
-let getStoredManga () =
-    Directory.GetDirectories(mangaData)
-    |> Seq.map fromDir
-    |> Seq.sortBy (fun m -> m.Title)
-    |> Seq.toList
+let fromTitle (mangaTitle: string) =
+    fromDir (Path.Combine(mangaData, mangaTitle))
 
 let firstPage (manga: StoredManga) =
-    let chapter = NonEmptyList.head manga.Chapters
+    let chapter = List.head manga.Chapters
     sprintf "/manga/%s/%s" (HttpUtility.UrlEncode manga.Title) chapter.Title
 
 let tryPreviousChapter (manga: StoredManga) (chapter: Chapter) =
-    let i = NonEmptyList.findIndex ((=) chapter) manga.Chapters
-    NonEmptyList.tryItem (i - 1) manga.Chapters
+    let i = List.findIndex ((=) chapter) manga.Chapters
+    List.tryItem (i - 1) manga.Chapters
 
 let tryNextChapter (manga: StoredManga) (chapter: Chapter) =
-    let i = NonEmptyList.findIndex ((=) chapter) manga.Chapters
-    NonEmptyList.tryItem (i + 1) manga.Chapters
-
-let tryFromTitle (storedManga: StoredManga list) (title: string) =
-    match storedManga |> List.tryFind (fun m -> m.Title = title) with
-    | Some manga ->
-        Some manga
-    | None ->
-        printfn "Couldn't find a manga titled %s." title
-        None
-
-let getRecent (storedManga: StoredManga list) =
-    let recentMangaPath = Path.Combine(mangaData, "recent-manga")
-    if File.Exists(recentMangaPath) then
-        File.ReadAllLines(recentMangaPath)
-        |> Seq.toList
-        |> List.map (tryFromTitle storedManga)
-        |> List.choose id
-        |> List.truncate 5
-    else
-        printfn "Could not read %s." recentMangaPath
-        []
+    let i = List.findIndex ((=) chapter) manga.Chapters
+    List.tryItem (i + 1) manga.Chapters
 
 let setLast (title: string) =
     let recentMangaPath = Path.Combine(mangaData, "recent-manga")

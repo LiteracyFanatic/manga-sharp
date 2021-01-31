@@ -7,7 +7,6 @@ open System.Text.Json
 open System.Globalization
 open System.Net.Http
 open FSharp.Data
-open MangaSharp
 open MangaSharp.Util
 open Flurl
 open Giraffe.ComputationExpressions

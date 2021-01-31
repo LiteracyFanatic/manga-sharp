@@ -1,36 +1,20 @@
 module MangaSharp.Bookmark
 
 open MangaSharp
-open MangaSharp.Util
 open System.IO
 open System.Web
 
-let private parse (mangaTitle: string) (bookmark: string) =
+let private parse (bookmark: string) =
     match bookmark.Split("/") with
-    | [|c; p|] ->
-        try
-            let chapter = Chapter.fromTitle mangaTitle c
-            let page = Page.fromTitle mangaTitle c p
-            HorizontalBookmark (c, p)
-        with
-        | x ->
-            failwith "The bookmarked location does not exist."
-    | [|c|] ->
-        try
-            let chapter = Chapter.fromTitle mangaTitle c
-            VerticalBookmark c
-        with
-        | x ->
-            failwith "The bookmarked location does not exist."
-    | _ ->
-        failwithf "%s is not a valid bookmark." bookmark
+    | [|c; p|] -> HorizontalBookmark (c, p)
+    | [|c|] -> VerticalBookmark c
+    | _ -> failwithf "%s is not a valid bookmark." bookmark
 
 let tryReadBookmark (mangaTitle: string) =
     let bookmarkPath = Path.Combine(mangaData, mangaTitle, "bookmark")
     if File.Exists(bookmarkPath) then
         let bookmark = File.ReadAllText(bookmarkPath).Trim()
-        parse mangaTitle bookmark
-        |> Some
+        Some (parse bookmark)
     else
         None
 

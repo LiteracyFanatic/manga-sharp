@@ -8,7 +8,6 @@ let firstPage (manga: MangaListing) =
         manga.Title
         |> ChapterStatus.get
         |> List.find (fun c -> c.DownloadStatus = Downloaded)
-
     sprintf "/manga/%s/%s" (HttpUtility.UrlEncode manga.Title) chapter.Title.Value
 
 let private fromDir (dir: string) =
@@ -58,7 +57,7 @@ let getAll () =
     |> Seq.sortBy (fun m -> m.Title)
     |> Seq.toList
 
-let getRecent (manga: MangaListing list) =
+let getRecent () =
     let recentMangaPath = Path.Combine(mangaData, "recent-manga")
     if File.Exists(recentMangaPath) then
         File.ReadAllLines(recentMangaPath)
