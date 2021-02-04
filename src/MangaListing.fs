@@ -8,7 +8,7 @@ let firstPage (manga: MangaListing) =
         manga.Title
         |> ChapterStatus.get
         |> List.find (fun c -> c.DownloadStatus = Downloaded)
-    sprintf "/manga/%s/%s" (HttpUtility.UrlEncode manga.Title) chapter.Title.Value
+    $"/manga/%s{HttpUtility.UrlEncode manga.Title}/%s{chapter.Title.Value}"
 
 let private fromDir (dir: string) =
     try

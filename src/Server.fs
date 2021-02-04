@@ -1,8 +1,6 @@
 module MangaSharp.Server
 
 open System.IO
-open System.Runtime.InteropServices
-open System.Diagnostics
 open System.Web
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
@@ -21,7 +19,7 @@ let private chapterSelect (manga: StoredManga) (chapter: Chapter) =
                     option [
                         attr "value" c.Title
                         if c = chapter then attr "selected" ""
-                    ] [ encodedText (sprintf "Chapter %s" c.Title) ]
+                    ] [ encodedText ($"Chapter %s{c.Title}") ]
             ]
         ]
     ]
@@ -32,7 +30,7 @@ let private pageSelect (chapter: Chapter) =
             select [ attr "id" "page-select" ] [
                 for p in chapter.Pages ->
                     option [ attr "value" p.Name ] [
-                        encodedText (sprintf "Page %i" (int p.Name))
+                        encodedText ($"Page %i{int p.Name}")
                     ]
             ]
         ]
@@ -70,7 +68,7 @@ let private mangaTable (mangaListing: MangaListing list) (tableTitle: string) =
                 td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
                 td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
                 td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
-                td [ _width "10%" ] [ encodedText (sprintf "%i/%i" (1 + m.ChapterIndex) m.NumberOfChapters) ]
+                td [ _width "10%" ] [ encodedText $"%i{1 + m.ChapterIndex}/%i{m.NumberOfChapters}" ]
             ]
     ]
 
@@ -93,20 +91,20 @@ let private index (allManga: MangaListing list) (recentManga: MangaListing list)
 let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
     let getHash (page: Page) =
         match manga.Source.Direction with
-        | Horizontal -> sprintf "#%s" page.Name
+        | Horizontal -> $"#%s{page.Name}"
         | Vertical -> ""
     let previousLink =
         Manga.tryPreviousChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (List.last c.Pages)))
+        |> Option.map (fun c -> $"/manga/%s{HttpUtility.UrlEncode manga.Title}/%s{c.Title}%s{getHash (List.last c.Pages)}")
     let nextLink =
         Manga.tryNextChapter manga chapter
-        |> Option.map (fun c -> sprintf "/manga/%s/%s%s" (HttpUtility.UrlEncode manga.Title) c.Title (getHash (List.head c.Pages)))
+        |> Option.map (fun c -> $"/manga/%s{HttpUtility.UrlEncode manga.Title}/%s{c.Title}%s{getHash (List.head c.Pages)}")
 
     html [] [
         head [] [
             meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
             meta [ attr "charset" "utf-8" ]
-            title [] [ encodedText (sprintf "MangaSharp - %s - %s" manga.Title chapter.Title) ]
+            title [] [ encodedText $"MangaSharp - %s{manga.Title} - %s{chapter.Title}" ]
             link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
             match manga.Source.Direction with
             | Horizontal ->
@@ -132,7 +130,7 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
                 for p in chapter.Pages ->
                     img [
                         attr "data-page" p.Name;
-                        attr "src" (sprintf "/manga/%s/%s/%s" (HttpUtility.UrlEncode manga.Title) chapter.Title p.File)
+                        attr "src" $"/manga/%s{HttpUtility.UrlEncode manga.Title}/%s{chapter.Title}/%s{p.File}"
                     ]
             ]
         ]
@@ -156,7 +154,7 @@ let private setBookmark (mangaTitle: string) =
             let! body = reader.ReadToEndAsync()
             let manga = Manga.fromTitle mangaTitle
             let bookmarkPath = Path.Combine(mangaData, manga.Title, "bookmark")
-            do! File.WriteAllTextAsync(bookmarkPath, sprintf "%s\n" body)
+            do! File.WriteAllTextAsync(bookmarkPath, $"%s{body}\n")
             return Some ctx
         })
     >=> Successful.NO_CONTENT
@@ -190,26 +188,6 @@ let private webApp (port: int) =
         RequestErrors.NOT_FOUND "Page not found."
     ]
 
-let private openInDefaultApp (url: string) =
-    let cmd, args =
-        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
-            "cmd", sprintf "/c start \"%s\"" url
-        else if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-            "xdg-open", sprintf "\"%s\"" url
-        else if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
-            "open", sprintf "\"%s\"" url
-        else
-            failwith "Unrecognized platform."
-    let startInfo =
-        ProcessStartInfo(
-            FileName=cmd,
-            Arguments=args,
-            UseShellExecute=false,
-            RedirectStandardOutput=true,
-            RedirectStandardError=true
-        )
-    Process.Start(startInfo) |> ignore
-
 let private configureApp (port: int) (env: WebHostBuilderContext) (app : IApplicationBuilder) =
     app
         .UseStaticFiles()
@@ -218,29 +196,36 @@ let private configureApp (port: int) (env: WebHostBuilderContext) (app : IApplic
 let private configureServices (services : IServiceCollection) =
     services.AddGiraffe() |> ignore
 
-let read (port: int Option) (openInBrowser: bool) (manga: MangaListing option) =
-    let p = Option.defaultValue 8080 port
-    let server =
-        Host
-            .CreateDefaultBuilder()
-            .UseSerilog(LoggerConfiguration().WriteTo.Console().CreateLogger())
-            .ConfigureWebHostDefaults(fun (webHost: IWebHostBuilder) ->
-                webHost
-                    .UseUrls(sprintf "http://localhost:%i" p)
-                    .ConfigureServices(configureServices)
-                    .Configure(configureApp p)
-                    |> ignore
-            )
-            .Build()
-            .RunAsync()
-    if openInBrowser then
-        let urlPath =
-            match manga with
-            | Some m ->
-                match m.Bookmark with
-                | Some b -> Bookmark.toUrl m.Title b
-                | None -> MangaListing.firstPage m
-            | None -> "/"
-        let url = sprintf "http://localhost:%i%s" p urlPath
-        openInDefaultApp url
-    server.Wait()
+    let scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>()
+    use scope = scopeFactory.CreateScope()
+    let provider = scope.ServiceProvider
+    let lifetime = provider.GetRequiredService<IHostApplicationLifetime>()
+    lifetime.ApplicationStarted.Register(fun () -> printfn "what's up") |> ignore
+
+let defaultPort = 8080
+
+let getMangaUrl (port: int option) (manga: MangaListing) =
+    let p = Option.defaultValue defaultPort port
+    let urlPath =
+        match manga.Bookmark with
+        | Some b -> Bookmark.toUrl manga.Title b
+        | None -> MangaListing.firstPage manga
+    $"http://localhost:%i{p}%s{urlPath}/"
+
+let getIndexUrl (port: int option) =
+    let p = Option.defaultValue defaultPort port
+    $"http://localhost:%i{p}/"
+
+let create (port: int option) =
+    let p = Option.defaultValue defaultPort port
+    Host
+        .CreateDefaultBuilder()
+        .UseSerilog(LoggerConfiguration().WriteTo.Console().CreateLogger())
+        .ConfigureWebHostDefaults(fun (webHost: IWebHostBuilder) ->
+            webHost
+                .UseUrls($"http://localhost:%i{p}")
+                .ConfigureServices(configureServices)
+                .Configure(configureApp p)
+                |> ignore
+        )
+        .Build()

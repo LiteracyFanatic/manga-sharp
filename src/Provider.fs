@@ -138,7 +138,7 @@ let private providers = [
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
                 let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(\d+)/.*")) url
-                let apiUrl = sprintf "https://api.mangadex.org/v2/manga/%s/chapters" mangaId
+                let apiUrl = $"https://api.mangadex.org/v2/manga/%s{mangaId}/chapters"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
                 let chapters = doc.GetProperty("chapters").EnumerateArray()
@@ -149,14 +149,14 @@ let private providers = [
                         let timeStamp = c.GetProperty("timestamp").GetInt64()
                         langCode = "gb" && timeStamp <= DateTimeOffset.Now.ToUnixTimeSeconds()
                     )
-                    |> Seq.map (fun c -> sprintf "https://mangadex.org/chapter/%i" (c.GetProperty("id").GetUInt64()))
+                    |> Seq.map (fun c -> $"""https://mangadex.org/chapter/%i{c.GetProperty("id").GetUInt64()}""")
                     |> Seq.rev
                 return urls
             }
         ChapterTitleExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
                 let! chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
-                let apiUrl = sprintf "https://api.mangadex.org/v2/chapter/%s" chapterId
+                let apiUrl = $"https://api.mangadex.org/v2/chapter/%s{chapterId}"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
                 return doc.GetProperty("chapter").GetString()
@@ -164,7 +164,7 @@ let private providers = [
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
                 let! chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
-                let apiUrl = sprintf "https://api.mangadex.org/v2/chapter/%s" chapterId
+                let apiUrl = $"https://api.mangadex.org/v2/chapter/%s{chapterId}"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
                 let server = doc.GetProperty("server").GetString()
@@ -251,12 +251,7 @@ let private providers = [
 ]
 
 let tryFromTable (url: string) =
-    match List.tryFind (fun p -> p.Pattern.IsMatch(url)) providers with
-    | Some provider ->
-        Some provider
-    | None ->
-        printfn "Could not find a provider that matched %s." url
-        None
+    List.tryFind (fun p -> p.Pattern.IsMatch(url)) providers
 
 let fromTable (url: string) =
     List.find (fun p -> p.Pattern.IsMatch(url)) providers

@@ -51,7 +51,7 @@ let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
             let! res = retryAsync 3 1000 (fun () ->
                 let req = reqFunc()
                 let ext = Path.GetExtension(req.RequestUri.LocalPath)
-                let path = Path.ChangeExtension(Path.Combine(folder, sprintf "%03i" (i + 1)), ext)
+                let path = Path.ChangeExtension(Path.Combine(folder, $"%03i{i + 1}"), ext)
                 downloadFileAsync path req
             )
             match res with
@@ -91,8 +91,8 @@ let private downloadChapters (manga: MangaSource) (mangaInfo: MangaInfo) (chapte
 let private createMangaDir (title: string) (manga: MangaSource) =
     let dir = Path.Combine(mangaData, title)
     Directory.CreateDirectory(dir) |> ignore
-    File.WriteAllText(Path.Combine(dir, "direction"), sprintf "%s\n" (manga.Direction.ToString()))
-    File.WriteAllText(Path.Combine(dir, "source"), sprintf "%s\n" manga.Url)
+    File.WriteAllText(Path.Combine(dir, "direction"), $"%s{manga.Direction.ToString()}\n")
+    File.WriteAllText(Path.Combine(dir, "source"), $"%s{manga.Url}\n")
 
 let download (manga: MangaSource) =
     match tryGetMangaInfo manga with
@@ -140,7 +140,7 @@ let fromTitle (mangaTitle: string) =
 
 let firstPage (manga: StoredManga) =
     let chapter = List.head manga.Chapters
-    sprintf "/manga/%s/%s" (HttpUtility.UrlEncode manga.Title) chapter.Title
+    $"/manga/%s{HttpUtility.UrlEncode manga.Title}/%s{chapter.Title}"
 
 let tryPreviousChapter (manga: StoredManga) (chapter: Chapter) =
     let i = List.findIndex ((=) chapter) manga.Chapters

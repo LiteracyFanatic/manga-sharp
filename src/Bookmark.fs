@@ -37,6 +37,6 @@ let tryGetPage (bookmark: Bookmark) =
 let toUrl (mangaTitle: string) (bookmark: Bookmark) =
     match bookmark with
     | HorizontalBookmark (chapter, page) ->
-        sprintf "/manga/%s/%s#%s" (HttpUtility.UrlEncode mangaTitle) chapter page
+        $"/manga/%s{HttpUtility.UrlEncode mangaTitle}/%s{chapter}#%s{page}"
     | VerticalBookmark chapter ->
-        sprintf "/manga/%s/%s" (HttpUtility.UrlEncode mangaTitle) chapter
+        $"/manga/%s{HttpUtility.UrlEncode mangaTitle}/%s{chapter}"

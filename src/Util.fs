@@ -3,6 +3,8 @@ module MangaSharp.Util
 open System
 open System.IO
 open System.Net.Http
+open System.Runtime.InteropServices
+open System.Diagnostics
 open FSharp.Data
 
 let rec retryAsync (n: int) (ms: int) (f: unit -> Async<'T option>) =
@@ -67,3 +69,27 @@ module HtmlDocument =
 module List =
     let mapAt (i: int) (f: 'a -> 'a) (list: 'a list) =
         List.mapi (fun n x -> if n = i then f x else x) list
+
+module Option =
+    let collect f =
+        Option.map f >> Option.flatten
+
+let openInDefaultApp (url: string) =
+    let cmd, args =
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
+            "cmd", $"/c start \"%s{url}\""
+        else if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+            "xdg-open", $"\"%s{url}\""
+        else if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
+            "open", $"\"%s{url}\""
+        else
+            failwith "Unrecognized platform."
+    let startInfo =
+        ProcessStartInfo(
+            FileName=cmd,
+            Arguments=args,
+            UseShellExecute=false,
+            RedirectStandardOutput=true,
+            RedirectStandardError=true
+        )
+    Process.Start(startInfo)
