@@ -1,4 +1,5 @@
-﻿open Microsoft.Extensions.Hosting
+// fsharplint:disable FL0041 Argu requires underscores in union names to separate words
+open Microsoft.Extensions.Hosting
 open MangaSharp
 open Argu
 
