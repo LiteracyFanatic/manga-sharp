@@ -98,6 +98,28 @@ let private providers = [
     }
 
     {
+        Pattern = Regex("https://(read)?manganato\.com/manga.*")
+        TitleExtractor = cssAndRegex "title" (Regex("(.*) Manga Online Free - Manganato"))
+        ChapterUrlsExtractor = extractChapterUrls ".chapter-name"
+        ChapterTitleExtractor = urlMatch (Regex("chapter-(.*)"))
+        ImageExtractor = fun (url: string) (html: HtmlDocument) ->
+            opt {
+                let! imgs = querySelectorAll html ".container-chapter-reader img"
+                let urls =
+                    imgs
+                    |> List.map (fun img ->
+                        let reqUrl = HtmlNode.attributeValue "src" img
+                        fun () ->
+                            let req = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, reqUrl)
+                            req.Headers.Referrer <- Uri(url)
+                            req
+                    )
+                    |> List.toSeq
+                return urls
+            }
+    }
+
+    {
         Pattern = Regex("https://manytoon\.com/comic/.*")
         TitleExtractor = cssAndRegex ".post-title h3" (Regex("(.*)"))
         ChapterUrlsExtractor = extractChapterUrls ".wp-manga-chapter a"
