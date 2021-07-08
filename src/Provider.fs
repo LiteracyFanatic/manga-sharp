@@ -156,47 +156,69 @@ let private providers = [
 
     {
         Pattern = Regex("https://mangadex\.org/title/.*")
-        TitleExtractor = cssAndRegex "title" (Regex("(.*) \(Title\) - MangaDex"))
-        ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
+        TitleExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
-                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(\d+)/.*")) url
-                let apiUrl = $"https://api.mangadex.org/v2/manga/%s{mangaId}/chapters"
+                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(.*)")) url
+                let apiUrl = $"https://api.mangadex.org/manga/%s{mangaId}"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
-                let chapters = doc.GetProperty("chapters").EnumerateArray()
+                let title = doc.GetProperty("attributes").GetProperty("title").GetProperty("en").GetString()
+                return title
+            }
+        ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
+            opt {
+                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(.*)")) url
+                let rec loop offset acc =
+                    opt {
+                        let apiUrl = $"https://api.mangadex.org/chapter?manga=%s{mangaId}&limit=100&offset=%i{offset}"
+                        let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                        let doc = JsonDocument.Parse(json).RootElement.GetProperty("results")
+                        let chapters =
+                            doc.EnumerateArray()
+                            |> Seq.map (fun c -> c.GetProperty("data"))
+                        if Seq.isEmpty chapters then
+                            return acc
+                        else
+                            return! loop (offset + 100) (Seq.append acc chapters)
+                    }
+                let! chapters = loop 0 Seq.empty
                 let urls =
                     chapters
-                    |> Seq.filter (fun c ->
-                        let langCode = c.GetProperty("language").GetString()
-                        let timeStamp = c.GetProperty("timestamp").GetInt64()
-                        langCode = "gb" && timeStamp <= DateTimeOffset.Now.ToUnixTimeSeconds()
-                    )
-                    |> Seq.map (fun c -> $"""https://mangadex.org/chapter/%i{c.GetProperty("id").GetUInt64()}""")
-                    |> Seq.rev
+                    |> Seq.choose (fun c ->
+                        let chapterId = c.GetProperty("id").GetString()
+                        let langCode = c.GetProperty("attributes").GetProperty("translatedLanguage").GetString()
+                        let timeStamp = c.GetProperty("attributes").GetProperty("publishAt").GetDateTime()
+                        if langCode = "en" && timeStamp <= DateTime.Now then
+                            Some $"https://mangadex.org/chapter/%s{chapterId}"
+                        else
+                            None)
                 return urls
             }
         ChapterTitleExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
-                let! chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
-                let apiUrl = $"https://api.mangadex.org/v2/chapter/%s{chapterId}"
+                let! chapterId = regexMatch (Regex(".*/chapter/(.*)")) url
+                let apiUrl = $"https://api.mangadex.org/chapter/%s{chapterId}"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
-                return doc.GetProperty("chapter").GetString()
+                return doc.GetProperty("attributes").GetProperty("chapter").GetString()
             }
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
-                let! chapterId = regexMatch (Regex(".*/chapter/(\d+)")) url
-                let apiUrl = $"https://api.mangadex.org/v2/chapter/%s{chapterId}"
+                let! chapterId = regexMatch (Regex(".*/chapter/(.*)")) url
+                let apiUrl = $"https://api.mangadex.org/chapter/%s{chapterId}"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
-                let server = doc.GetProperty("server").GetString()
-                let hash = doc.GetProperty("hash").GetString()
+                let hash = doc.GetProperty("attributes").GetProperty("hash").GetString()
                 let pages =
-                    doc.GetProperty("pages").EnumerateArray()
+                    doc.GetProperty("attributes").GetProperty("data").EnumerateArray()
                     |> Seq.map (fun el -> el.GetString())
+                let apiUrl = $"https://api.mangadex.org/at-home/server/%s{chapterId}"
+                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let doc = JsonDocument.Parse(json).RootElement
+                let baseUrl = doc.GetProperty("baseUrl").GetString()
                 let reqs =
                     pages
-                    |> Seq.map (fun p -> Path.Combine(server, hash, p) |> toHttpRequestMessageFunc)
+                    |> Seq.map (fun p -> Path.Combine(baseUrl, "data", hash, p) |> toHttpRequestMessageFunc)
                 return reqs
             }
     }
