@@ -170,7 +170,7 @@ let private providers = [
                 let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(.*)")) url
                 let rec loop offset acc =
                     opt {
-                        let apiUrl = $"https://api.mangadex.org/chapter?manga=%s{mangaId}&limit=100&offset=%i{offset}"
+                        let apiUrl = $"https://api.mangadex.org/chapter?manga=%s{mangaId}&limit=100&offset=%i{offset}&order[chapter]=asc"
                         let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                         let doc = JsonDocument.Parse(json).RootElement.GetProperty("results")
                         let chapters =
