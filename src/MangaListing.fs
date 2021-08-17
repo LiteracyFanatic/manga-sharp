@@ -13,7 +13,7 @@ let firstPage (manga: MangaListing) =
 let private fromDir (dir: string) =
     try
         let title = Path.GetFileName(dir)
-        let indexUrl = File.ReadAllText (Path.Combine(dir, "source"))
+        let indexUrl = File.ReadAllText(Path.Combine(dir, "source")).Trim()
         let numberOfChapters =
             title
             |> ChapterStatus.get

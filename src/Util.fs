@@ -20,7 +20,7 @@ let rec retryAsync (n: int) (ms: int) (f: unit -> Async<'T option>) =
                 return! retryAsync (n - 1) ms f
     }
 
-let private hc = lazy new HttpClient(Timeout=TimeSpan.FromSeconds(20.))
+let hc = lazy new HttpClient(Timeout=TimeSpan.FromSeconds(20.))
 
 let downloadFileAsync (path: string) (req: HttpRequestMessage) =
     async {
@@ -52,7 +52,7 @@ module HtmlDocument =
             Some (HtmlDocument.Parse text)
         with
         | _ ->
-            printfn "Could not parse HTML."
+            printfn "Could not parse HTML document."
             None
 
     let tryLoadAsync (url: string) =

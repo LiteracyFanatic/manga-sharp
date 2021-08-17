@@ -121,8 +121,23 @@ let private providers = [
 
     {
         Pattern = Regex("https://manytoon\.com/comic/.*")
-        TitleExtractor = cssAndRegex ".post-title h3" (Regex("(.*)"))
-        ChapterUrlsExtractor = extractChapterUrls ".wp-manga-chapter a"
+        TitleExtractor = cssAndRegex ".post-title h1" (Regex("(.*)"))
+        ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
+            opt {
+                let chaptersUrl = Path.Join(url, "ajax/chapters")
+                let response = hc.Force().PostAsync(chaptersUrl, null) |> Async.AwaitTask |> Async.RunSynchronously
+                response.EnsureSuccessStatusCode() |> ignore
+                let htmlContent = response.Content.ReadAsStringAsync() |> Async.AwaitTask |> Async.RunSynchronously
+                let htmlContent = $"<html><head></head><body>%s{htmlContent}</body></html>"
+                let! htmlDoc = HtmlDocument.tryParse htmlContent
+                let! chapters = querySelectorAll htmlDoc ".wp-manga-chapter a"
+                let urls =
+                    chapters
+                    |> Seq.rev
+                    |> Seq.map (HtmlNode.attributeValue "href")
+                    |> Seq.distinct
+                return urls
+            }
         ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
         ImageExtractor = extractImageUrls ".wp-manga-chapter-img"
     }
