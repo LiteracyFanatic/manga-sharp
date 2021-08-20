@@ -48,7 +48,8 @@ let private cssAndRegex (cssQuery: string) (regex: Regex) = fun (url: string) (h
     opt {
         let! node = querySelector html cssQuery
         let text = HtmlNode.directInnerText node
-        return! regexMatch regex text
+        let! matchingText = regexMatch regex text
+        return matchingText.Trim()
     }
 
 let private resolveUrl (baseUrl: string) (url: string) =
