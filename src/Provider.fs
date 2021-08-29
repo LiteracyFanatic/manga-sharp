@@ -174,7 +174,7 @@ let private providers = [
         Pattern = Regex("https://mangadex\.org/title/.*")
         TitleExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
-                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(.*)")) url
+                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/([^/]*)(/.*)?")) url
                 let apiUrl = $"https://api.mangadex.org/manga/%s{mangaId}"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
@@ -183,7 +183,7 @@ let private providers = [
             }
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
-                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/(.*)")) url
+                let! mangaId = regexMatch (Regex("https://mangadex\.org/title/([^/]*)(/.*)?")) url
                 let rec loop offset acc =
                     opt {
                         let apiUrl = $"https://api.mangadex.org/chapter?manga=%s{mangaId}&limit=100&offset=%i{offset}&order[chapter]=asc"
