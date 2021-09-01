@@ -171,6 +171,14 @@ let private providers = [
     }
 
     {
+        Pattern = Regex("https://manhwa18\.cc/.*")
+        TitleExtractor = cssAndRegex ".post-title h1" (Regex("(.*)"))
+        ChapterUrlsExtractor = extractChapterUrls ".chapter-name"
+        ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
+        ImageExtractor = extractImageUrls ".read-content img"
+    }
+
+    {
         Pattern = Regex("https://mangadex\.org/title/.*")
         TitleExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
