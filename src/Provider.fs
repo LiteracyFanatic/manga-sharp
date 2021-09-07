@@ -140,7 +140,19 @@ let private providers = [
                 return urls
             }
         ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
-        ImageExtractor = extractImageUrls ".wp-manga-chapter-img"
+        
+        ImageExtractor = fun (url: string) (html: HtmlDocument) ->
+            opt {
+                let! nodes = querySelectorAll html ".wp-manga-chapter-img"
+                // Remove duplicates and data URLs
+                let urls =
+                    nodes
+                    |> Seq.map (HtmlNode.attributeValue "src")
+                    |> Seq.filter (fun src -> not (src.StartsWith("data")))
+                    |> Seq.distinct
+                    |> Seq.map (resolveUrl url >> toHttpRequestMessageFunc)
+                return urls
+            }
     }
 
     {
