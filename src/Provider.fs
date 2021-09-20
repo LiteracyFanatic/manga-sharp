@@ -147,7 +147,7 @@ let private providers = [
                 // Remove duplicates and data URLs
                 let urls =
                     nodes
-                    |> Seq.map (HtmlNode.attributeValue "src")
+                    |> Seq.collect (fun img -> [HtmlNode.attributeValue "src" img; HtmlNode.attributeValue "data-src" img])
                     |> Seq.filter (fun src -> not (src.StartsWith("data")))
                     |> Seq.distinct
                     |> Seq.map (resolveUrl url >> toHttpRequestMessageFunc)
@@ -208,10 +208,8 @@ let private providers = [
                     opt {
                         let apiUrl = $"https://api.mangadex.org/chapter?manga=%s{mangaId}&limit=100&offset=%i{offset}&order[chapter]=asc"
                         let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
-                        let doc = JsonDocument.Parse(json).RootElement.GetProperty("results")
-                        let chapters =
-                            doc.EnumerateArray()
-                            |> Seq.map (fun c -> c.GetProperty("data"))
+                        let doc = JsonDocument.Parse(json).RootElement
+                        let chapters = doc.GetProperty("data").EnumerateArray()
                         if Seq.isEmpty chapters then
                             return acc
                         else
