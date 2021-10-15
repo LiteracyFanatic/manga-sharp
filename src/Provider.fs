@@ -198,8 +198,17 @@ let private providers = [
                 let apiUrl = $"https://api.mangadex.org/manga/%s{mangaId}"
                 let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
-                let title = doc.GetProperty("attributes").GetProperty("title").GetProperty("en").GetString()
-                return title
+                match doc.GetProperty("attributes").GetProperty("title").TryGetProperty("en") with
+                | true, title ->
+                    return title.GetString()
+                | _ ->
+                    let title =
+                        doc.GetProperty("attributes").GetProperty("altTitles").EnumerateArray()
+                        |> Seq.pick (fun altTitle ->
+                            match altTitle.TryGetProperty("en") with
+                            | true, title -> Some title
+                            | _ -> None)
+                    return title.GetString()
             }
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
             opt {
