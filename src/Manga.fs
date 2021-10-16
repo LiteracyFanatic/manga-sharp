@@ -3,51 +3,53 @@ module MangaSharp.Manga
 open System.IO
 open System.Web
 open MangaSharp.Util
+open FsToolkit.ErrorHandling
 
 let private tryGetMangaInfo (manga: MangaSource) =
-    let html =
-        retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync manga.Url)
-        |> Async.RunSynchronously
-    match html with
-    | Some index ->
-        let title = manga.Provider.TitleExtractor manga.Url index
-        let chapterUrls = manga.Provider.ChapterUrlsExtractor manga.Url index
+    taskResult {
+        let! html =
+            retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync manga.Url)
+            |> TaskResult.mapError List.singleton
+        let title = manga.Provider.TitleExtractor manga.Url html
+        let chapterUrls = manga.Provider.ChapterUrlsExtractor manga.Url html
         match title, chapterUrls with
-        | Some title, Some chapterUrls ->
-            Some { Title = title; ChapterUrls = chapterUrls }
+        | Ok title, Ok chapterUrls ->
+            return { Title = title; ChapterUrls = chapterUrls }
         | title, chapterUrls ->
-            if title.IsNone then
-                printfn "Could not extract title from %s." manga.Url
-            if chapterUrls.IsNone then
-                printfn "Could not extract chapter URLs from %s." manga.Url
-            None
-    | None -> None
+            return! Error [
+                if Result.isError title then
+                    $"Could not extract title from %s{manga.Url}."
+                if Result.isError chapterUrls then
+                    $"Could not extract chapter URLs from %s{manga.Url}."
+            ]
+    } |> Async.AwaitTask
+    |> Async.RunSynchronously
 
 let private tryGetChapterInfo (manga: MangaSource) (url: string) =
-    let html =
-        retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync url)
-        |> Async.RunSynchronously
-    match html with
-    | Some chapterPage ->
-        let title = manga.Provider.ChapterTitleExtractor url chapterPage
-        let imageUrls = manga.Provider.ImageExtractor url chapterPage
+    taskResult {
+        let! html =
+            retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync url)
+            |> TaskResult.mapError List.singleton
+        let title = manga.Provider.ChapterTitleExtractor url html
+        let imageUrls = manga.Provider.ImageExtractor url html
         match title, imageUrls with
-        | Some title, Some imageUrls ->
-            Some { Title = title; ImageRequests = imageUrls }
+        | Ok title, Ok imageUrls ->
+            return { Title = title; ImageRequests = imageUrls }
         | title, imageUrls ->
-            if title.IsNone then
-                printfn "Could not extract title from %s." url
-            if imageUrls.IsNone then
-                printfn "Could not extract image URLs from %s." url
-            None
-    | None -> None
+            return! Error [
+                if Result.isError title then
+                    printfn "Could not extract title from %s." url
+                if Result.isError imageUrls then
+                    printfn "Could not extract image URLs from %s." url
+            ]
+    } |> Async.AwaitTask
+    |> Async.RunSynchronously
 
 let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
     let folder = Path.Combine(mangaData, mangaInfo.Title, chapterInfo.Title)
     Directory.CreateDirectory(folder) |> ignore
-    chapterInfo.ImageRequests
-    |> Seq.mapi (fun i reqFunc ->
-        async {
+    task {
+        for i, reqFunc in Seq.indexed chapterInfo.ImageRequests do
             let! res = retryAsync 3 1000 (fun () ->
                 let req = reqFunc()
                 let ext = Path.GetExtension(req.RequestUri.LocalPath)
@@ -55,12 +57,9 @@ let private downloadChapter (mangaInfo: MangaInfo) (chapterInfo: ChapterInfo) =
                 downloadFileAsync path req
             )
             match res with
-            | Some _ -> ()
-            | None -> printfn "Could not download %s." (reqFunc().RequestUri.ToString())
-        }
-    )
-    |> Async.Sequential
-    |> Async.Ignore
+            | Ok _ -> ()
+            | Error _ -> printfn "Could not download %s." (reqFunc().RequestUri.ToString())
+    } |> Async.AwaitTask
     |> Async.RunSynchronously
 
 let private downloadChapters (manga: MangaSource) (mangaInfo: MangaInfo) (chapters: ChapterStatus list) =
@@ -71,16 +70,16 @@ let private downloadChapters (manga: MangaSource) (mangaInfo: MangaInfo) (chapte
         |> List.length
     let rec loop i count chapters =
         if i < List.length chapters then
-            if chapters.[i].DownloadStatus = NotDownloaded then
+            if chapters[i].DownloadStatus = NotDownloaded then
                 let chapters' =
-                    match tryGetChapterInfo manga chapters.[i].Url with
-                    | Some chapterInfo ->
+                    match tryGetChapterInfo manga chapters[i].Url with
+                    | Ok chapterInfo ->
                         printfn "Downloading %s Chapter %s (%i/%i)..." mangaInfo.Title chapterInfo.Title count n
                         downloadChapter mangaInfo chapterInfo
                         chapters
                         |> List.mapAt i (fun chapter ->
                             { chapter with Title = Some chapterInfo.Title; DownloadStatus = Downloaded })
-                    | None -> chapters
+                    | Error _ -> chapters
                 ChapterStatus.save chaptersPath chapters'
                 loop (i + 1) (count + 1) chapters'
             else
@@ -96,7 +95,7 @@ let private createMangaDir (title: string) (manga: MangaSource) =
 
 let download (manga: MangaSource) =
     match tryGetMangaInfo manga with
-    | Some mangaInfo ->
+    | Ok mangaInfo ->
         createMangaDir mangaInfo.Title manga
         let chapterInfo = ChapterStatus.get mangaInfo.Title
         let chapters = ChapterStatus.merge mangaInfo (List.ofSeq mangaInfo.ChapterUrls) chapterInfo
@@ -105,7 +104,7 @@ let download (manga: MangaSource) =
             true
         else
             false
-    | None -> false
+    | Error _ -> false
 
 let private fromDir (dir: string) =
     try

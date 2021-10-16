@@ -7,8 +7,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Giraffe
-open Giraffe.GiraffeViewEngine
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open Giraffe.ViewEngine
 open Serilog
 
 let private chapterSelect (manga: StoredManga) (chapter: Chapter) =

@@ -9,43 +9,42 @@ open System.Net.Http
 open FSharp.Data
 open MangaSharp.Util
 open Flurl
-open Giraffe.ComputationExpressions
+open FsToolkit.ErrorHandling
 
 let private querySelector (html: HtmlDocument) (cssQuery: string) =
-    opt {
-        match html.CssSelect(cssQuery) with
-        | [] -> printfn "%s did not match any elements." cssQuery
-        | [node] -> return node
-        | _ -> printfn "%s matched multiple elements." cssQuery
-    }
+    match html.CssSelect(cssQuery) with
+    | [] ->
+        Error $"%s{cssQuery} did not match any elements."
+    | [node] -> Ok node
+    | _ ->
+        Error $"%s{cssQuery} matched multiple elements."
 
 let private querySelectorAll (html: HtmlDocument) (cssQuery: string) =
-    opt {
-        match html.CssSelect(cssQuery) with
-        | [] -> printfn "%s didn't match any elements." cssQuery
-        | elements -> return elements
-    }
+    match html.CssSelect(cssQuery) with
+    | [] ->
+        Error $"%s{cssQuery} didn't match any elements."
+    | elements -> Ok elements
 
 let private regexMatch (regex: Regex) (input: string) =
-    opt {
-        let m = regex.Match(input)
-        if m.Success then
-            let groups = seq m.Groups
-            match Seq.tryItem 1 groups with
-            | Some group ->
-                match group.Value.Trim() with
-                | "" -> printfn "%A returned an empty match." regex
-                | value -> return value
-            | None -> printfn "%A capture group 1 did not exist." regex
-        else
-            printfn "%A did not match." regex
-    }
+    let m = regex.Match(input)
+    if m.Success then
+        let groups = seq m.Groups
+        match Seq.tryItem 1 groups with
+        | Some group ->
+            match group.Value.Trim() with
+            | "" ->
+                Error $"%A{regex} returned an empty match."
+            | value -> Ok value
+        | None ->
+            Error $"%A{regex} capture group 1 did not exist."
+    else
+        Error $"%A{regex} did not match."
 
 let private urlMatch (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
     regexMatch regex url
 
 let private cssAndRegex (cssQuery: string) (regex: Regex) = fun (url: string) (html: HtmlDocument) ->
-    opt {
+    result {
         let! node = querySelector html cssQuery
         let text = HtmlNode.directInnerText node
         let! matchingText = regexMatch regex text
@@ -56,7 +55,7 @@ let private resolveUrl (baseUrl: string) (url: string) =
     Uri(Uri(baseUrl), url).AbsoluteUri
 
 let private extractChapterUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
-    opt {
+    result {
         let! chapters = querySelectorAll html cssQuery
         let urls =
             chapters
@@ -70,7 +69,7 @@ let toHttpRequestMessageFunc (url: string) =
     fun () -> new HttpRequestMessage(System.Net.Http.HttpMethod.Get, url)
 
 let private extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument) ->
-    opt {
+    result {
         let! nodes = querySelectorAll html cssQuery
         return Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url >> toHttpRequestMessageFunc) nodes
     }
@@ -82,7 +81,7 @@ let private providers = [
         ChapterUrlsExtractor = extractChapterUrls ".chapter-name"
         ChapterTitleExtractor = urlMatch (Regex("chapter_(.*)"))
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            result {
                 let! imgs = querySelectorAll html ".container-chapter-reader img"
                 let urls =
                     imgs
@@ -104,7 +103,7 @@ let private providers = [
         ChapterUrlsExtractor = extractChapterUrls ".chapter-name"
         ChapterTitleExtractor = urlMatch (Regex("chapter-(.*)"))
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            result {
                 let! imgs = querySelectorAll html ".container-chapter-reader img"
                 let urls =
                     imgs
@@ -124,11 +123,11 @@ let private providers = [
         Pattern = Regex("https://manytoon\.com/comic/.*")
         TitleExtractor = cssAndRegex ".post-title h1" (Regex("(.*)"))
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            taskResult {
                 let chaptersUrl = Path.Join(url, "ajax/chapters")
-                let response = hc.Force().PostAsync(chaptersUrl, null) |> Async.AwaitTask |> Async.RunSynchronously
+                let! response = hc.Force().PostAsync(chaptersUrl, null)
                 response.EnsureSuccessStatusCode() |> ignore
-                let htmlContent = response.Content.ReadAsStringAsync() |> Async.AwaitTask |> Async.RunSynchronously
+                let! htmlContent = response.Content.ReadAsStringAsync()
                 let htmlContent = $"<html><head></head><body>%s{htmlContent}</body></html>"
                 let! htmlDoc = HtmlDocument.tryParse htmlContent
                 let! chapters = querySelectorAll htmlDoc ".wp-manga-chapter a"
@@ -138,11 +137,11 @@ let private providers = [
                     |> Seq.map (HtmlNode.attributeValue "href")
                     |> Seq.distinct
                 return urls
-            }
+            } |> Async.AwaitTask
+            |> Async.RunSynchronously
         ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
-        
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            result {
                 let! nodes = querySelectorAll html ".wp-manga-chapter-img"
                 // Remove duplicates and data URLs
                 let urls =
@@ -158,7 +157,7 @@ let private providers = [
     {
         Pattern = Regex("https://manhwa18\.com/.*")
         TitleExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            result {
                 let textInfo = CultureInfo("en-US", false).TextInfo
                 let! node = querySelector html ".manga-info h1"
                 let title =
@@ -169,7 +168,7 @@ let private providers = [
                 return title
             }
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            result {
                 let! chapters = querySelectorAll html ".chapter"
                 let urls =
                     chapters
@@ -193,10 +192,10 @@ let private providers = [
     {
         Pattern = Regex("https://mangadex\.org/title/.*")
         TitleExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            taskResult {
                 let! mangaId = regexMatch (Regex("https://mangadex\.org/title/([^/]*)(/.*)?")) url
                 let apiUrl = $"https://api.mangadex.org/manga/%s{mangaId}"
-                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let! json = tryDownloadStringAsync apiUrl
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
                 match doc.GetProperty("attributes").GetProperty("title").TryGetProperty("en") with
                 | true, title ->
@@ -209,14 +208,15 @@ let private providers = [
                             | true, title -> Some title
                             | _ -> None)
                     return title.GetString()
-            }
+            } |> Async.AwaitTask
+            |> Async.RunSynchronously
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            taskResult {
                 let! mangaId = regexMatch (Regex("https://mangadex\.org/title/([^/]*)(/.*)?")) url
                 let rec loop offset acc =
-                    opt {
+                    taskResult {
                         let apiUrl = $"https://api.mangadex.org/chapter?manga=%s{mangaId}&limit=100&offset=%i{offset}&order[chapter]=asc"
-                        let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                        let! json = tryDownloadStringAsync apiUrl
                         let doc = JsonDocument.Parse(json).RootElement
                         let chapters = doc.GetProperty("data").EnumerateArray()
                         if Seq.isEmpty chapters then
@@ -236,52 +236,55 @@ let private providers = [
                         else
                             None)
                 return urls
-            }
+            } |> Async.AwaitTask
+            |> Async.RunSynchronously
         ChapterTitleExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            taskResult {
                 let! chapterId = regexMatch (Regex(".*/chapter/(.*)")) url
                 let apiUrl = $"https://api.mangadex.org/chapter/%s{chapterId}"
-                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let! json = tryDownloadStringAsync apiUrl
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
                 return doc.GetProperty("attributes").GetProperty("chapter").GetString()
-            }
+            } |> Async.AwaitTask
+            |> Async.RunSynchronously
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            taskResult {
                 let! chapterId = regexMatch (Regex(".*/chapter/(.*)")) url
                 let apiUrl = $"https://api.mangadex.org/chapter/%s{chapterId}"
-                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let! json = tryDownloadStringAsync apiUrl
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
                 let hash = doc.GetProperty("attributes").GetProperty("hash").GetString()
                 let pages =
                     doc.GetProperty("attributes").GetProperty("data").EnumerateArray()
                     |> Seq.map (fun el -> el.GetString())
                 let apiUrl = $"https://api.mangadex.org/at-home/server/%s{chapterId}"
-                let! json = tryDownloadStringAsync apiUrl |> Async.RunSynchronously
+                let! json = tryDownloadStringAsync apiUrl
                 let doc = JsonDocument.Parse(json).RootElement
                 let baseUrl = doc.GetProperty("baseUrl").GetString()
                 let reqs =
                     pages
                     |> Seq.map (fun p -> Path.Combine(baseUrl, "data", hash, p) |> toHttpRequestMessageFunc)
                 return reqs
-            }
+            } |> Async.AwaitTask
+            |> Async.RunSynchronously
     }
 
     {
         Pattern = Regex("https://www\.webtoons\.com/en/.*/.*/list\?.*")
         TitleExtractor = cssAndRegex "title" (Regex("(.*) \| WEBTOON"))
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            taskResult {
                 let rec getLastPageGroup urlArg htmlArg =
-                    match querySelector htmlArg "a.pg_next" with
-                    | Some el ->
-                        let nextPageGroupHref =
-                            HtmlNode.attributeValue "href" el
-                            |> resolveUrl urlArg
-                        retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync nextPageGroupHref)
-                        |> Async.RunSynchronously
-                        |> Option.map (fun h -> getLastPageGroup nextPageGroupHref h)
-                        |> Option.flatten
-                    | None -> Some (urlArg, htmlArg)
+                    taskResult {
+                        match querySelector htmlArg "a.pg_next" with
+                        | Ok el ->
+                            let nextPageGroupHref =
+                                HtmlNode.attributeValue "href" el
+                                |> resolveUrl urlArg
+                            let! html = retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync nextPageGroupHref)
+                            return! getLastPageGroup nextPageGroupHref html
+                        | Error _ -> return (urlArg, htmlArg)
+                    }
                 let! url, html = getLastPageGroup url html
                 let! paginateLinks = querySelectorAll html ".paginate a"
                 let lastPageHref =
@@ -296,31 +299,25 @@ let private providers = [
                 let pageUrls =
                     [ 1 .. lastPageNumber ]
                     |> List.map (fun i -> url.SetQueryParam("page", i))
-                let lift l =
-                    if Seq.contains None l then None
-                    else Some (Seq.map Option.get l)
                 let! chapterUrlGroups =
                     pageUrls
-                    |> List.toSeq
-                    |> Seq.map (fun page ->
-                        opt {
-                            let! html =
-                                retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync (page.ToString()))
-                                |> Async.RunSynchronously
+                    |> List.traverseTaskResultM (fun page ->
+                        taskResult {
+                            let! html = retryAsync 3 1000 (fun () -> HtmlDocument.tryLoadAsync (page.ToString()))
                             let! chapterLinks = querySelectorAll html "#_listUl a"
                             return Seq.map (HtmlNode.attributeValue "href") chapterLinks
                         }
                     )
-                    |> lift
                 let chapterUrls =
                     chapterUrlGroups
                     |> Seq.collect id
                     |> Seq.rev
                 return chapterUrls
-            }
+            } |> Async.AwaitTask
+            |> Async.RunSynchronously
         ChapterTitleExtractor = urlMatch (Regex("episode_no=(\d+)"))
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
-            opt {
+            result {
                 let! imgs = querySelectorAll html "#_imageList img"
                 let urls =
                     imgs

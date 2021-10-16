@@ -17,10 +17,10 @@ type Direction =
 
 type Provider = {
     Pattern: Regex
-    TitleExtractor: string -> HtmlDocument -> string option
-    ChapterUrlsExtractor: string -> HtmlDocument -> string seq option
-    ChapterTitleExtractor: string -> HtmlDocument -> string option
-    ImageExtractor: string -> HtmlDocument -> (unit -> HttpRequestMessage) seq option
+    TitleExtractor: string -> HtmlDocument -> Result<string, string>
+    ChapterUrlsExtractor: string -> HtmlDocument -> Result<string seq, string>
+    ChapterTitleExtractor: string -> HtmlDocument -> Result<string, string>
+    ImageExtractor: string -> HtmlDocument -> Result<(unit -> HttpRequestMessage) seq, string>
 }
 
 type MangaSource = {

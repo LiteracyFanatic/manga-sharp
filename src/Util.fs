@@ -5,16 +5,17 @@ open System.IO
 open System.Net.Http
 open System.Runtime.InteropServices
 open System.Diagnostics
+open System.Threading.Tasks
 open FSharp.Data
 
-let rec retryAsync (n: int) (ms: int) (f: unit -> Async<'T option>) =
-    async {
+let rec retryAsync (n: int) (ms: int) (f: unit -> Task<Result<'T, string>>) =
+    task {
         match! f () with
-        | Some x ->
-            return Some x
-        | None ->
+        | Ok x ->
+            return Ok x
+        | Error e ->
             if n = 0 then
-                return None
+                return Error e
             else
                 do! Async.Sleep(ms)
                 return! retryAsync (n - 1) ms f
@@ -23,47 +24,45 @@ let rec retryAsync (n: int) (ms: int) (f: unit -> Async<'T option>) =
 let hc = lazy new HttpClient(Timeout=TimeSpan.FromSeconds(20.))
 
 let downloadFileAsync (path: string) (req: HttpRequestMessage) =
-    async {
+    task {
         try
-            let! res = hc.Force().SendAsync(req) |> Async.AwaitTask
-            let! downloadStream = res.Content.ReadAsStreamAsync() |> Async.AwaitTask
+            let! res = hc.Force().SendAsync(req)
+            let! downloadStream = res.Content.ReadAsStreamAsync()
             use fileStream = new FileStream(path, FileMode.Create)
-            do! downloadStream.CopyToAsync(fileStream) |> Async.AwaitTask
-            return Some ()
+            do! downloadStream.CopyToAsync(fileStream)
+            return Ok ()
         with
         | _ ->
-            return None
+            return Error ""
     }
 
 let tryDownloadStringAsync (url: string) =
-    async {
+    task {
         try
-            let! res = hc.Force().GetStringAsync(url) |> Async.AwaitTask
-            return Some res
+            let! res = hc.Force().GetStringAsync(url)
+            return Ok res
         with
         | _ ->
-            return None
+            return Error ""
     }
 
 module HtmlDocument =
 
     let tryParse (text: string) =
         try
-            Some (HtmlDocument.Parse text)
+            Ok (HtmlDocument.Parse text)
         with
         | _ ->
-            printfn "Could not parse HTML document."
-            None
+            Error "Could not parse HTML document."
 
     let tryLoadAsync (url: string) =
-        async {
+        task {
             try
-                let! text = hc.Force().GetStringAsync(url) |> Async.AwaitTask
+                let! text = hc.Force().GetStringAsync(url)
                 return tryParse text
             with
             | :? HttpRequestException ->
-                printfn "Could not download %s." url
-                return None
+                return Error $"Could not download %s{url}."
         }
 
 module List =
