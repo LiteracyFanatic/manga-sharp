@@ -1,15 +1,13 @@
 function setBookmark() {
     const page = window.location.hash.slice(1);
-    const { manga, chapter, port } = document.body.dataset
-    const url = `http://localhost:${port}/manga/${manga}/bookmark`;
+    const { manga, chapter } = document.body.dataset
     const bookmark = page ? `${chapter}/${page}` : chapter;
-    fetch(url, { method: "PUT", body: bookmark });
+    fetch(`/manga/${manga}/bookmark`, { method: "PUT", body: bookmark });
 }
 
 function setLastManga() {
-    const { manga, port } = document.body.dataset;
-    const url = `http://localhost:${port}/manga/last-manga`;
-    fetch(url, { method: "PUT", body: manga });
+    const { manga } = document.body.dataset;
+    fetch("/manga/last-manga", { method: "PUT", body: manga });
 }
 
 function hashChangeHandler() {

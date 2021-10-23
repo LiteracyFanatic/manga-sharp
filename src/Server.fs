@@ -85,7 +85,7 @@ let private index (allManga: MangaListing list) (recentManga: MangaListing list)
     ]
     |> htmlView
 
-let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
+let private mangaPage (manga: StoredManga) (chapter: Chapter) =
     let getHash (page: Page) =
         match manga.Source.Direction with
         | Horizontal -> $"#%s{page.Name}"
@@ -116,7 +116,6 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
             attr "data-manga" (HttpUtility.UrlEncode manga.Title)
             attr "data-direction" (manga.Source.Direction.ToString())
             attr "data-chapter" chapter.Title
-            attr "data-port" (string port)
         ] [
             div [ _id "select-container"; _class "field is-grouped" ] [
                 homeButton
@@ -156,7 +155,7 @@ let private setBookmark (mangaTitle: string) =
         })
     >=> Successful.NO_CONTENT
 
-let private webApp (port: int) =
+let private webApp =
     choose [
         GET >=> choose [
             route "/" >=> warbler (fun _ ->
@@ -169,7 +168,7 @@ let private webApp (port: int) =
                     route "" >=> warbler (fun _ ->
                         let manga = Manga.fromTitle mangaTitle
                         let chapter = manga.Chapters |> List.find (fun ch -> ch.Title = c)
-                        mangaPage port manga chapter
+                        mangaPage manga chapter
                     )
                     routef "/%s" (fun p ->
                         let path = Path.Combine(mangaData, mangaTitle, c, p)
@@ -207,5 +206,5 @@ let create (port: int option) =
     builder.Services.AddGiraffe() |> ignore
     let app = builder.Build()
     app.UseStaticFiles() |> ignore
-    app.UseGiraffe(webApp p)
+    app.UseGiraffe(webApp)
     app
