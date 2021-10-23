@@ -4,8 +4,6 @@ open System.IO
 open System.Web
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
-open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Hosting
 open Giraffe
 open Giraffe.ViewEngine
 open Serilog
@@ -187,20 +185,6 @@ let private webApp (port: int) =
         RequestErrors.NOT_FOUND "Page not found."
     ]
 
-let private configureApp (port: int) (env: WebHostBuilderContext) (app : IApplicationBuilder) =
-    app
-        .UseStaticFiles()
-        .UseGiraffe(webApp port)
-
-let private configureServices (services : IServiceCollection) =
-    services.AddGiraffe() |> ignore
-
-    let scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>()
-    use scope = scopeFactory.CreateScope()
-    let provider = scope.ServiceProvider
-    let lifetime = provider.GetRequiredService<IHostApplicationLifetime>()
-    lifetime.ApplicationStarted.Register(fun () -> printfn "what's up") |> ignore
-
 let defaultPort = 8080
 
 let getMangaUrl (port: int option) (manga: MangaListing) =
@@ -217,14 +201,11 @@ let getIndexUrl (port: int option) =
 
 let create (port: int option) =
     let p = Option.defaultValue defaultPort port
-    Host
-        .CreateDefaultBuilder()
-        .UseSerilog(LoggerConfiguration().WriteTo.Console().CreateLogger())
-        .ConfigureWebHostDefaults(fun (webHost: IWebHostBuilder) ->
-            webHost
-                .UseUrls($"http://localhost:%i{p}")
-                .ConfigureServices(configureServices)
-                .Configure(configureApp p)
-                |> ignore
-        )
-        .Build()
+    let builder = WebApplication.CreateBuilder()
+    builder.WebHost.UseUrls($"http://localhost:%i{p}") |> ignore
+    builder.Host.UseSerilog(LoggerConfiguration().WriteTo.Console().CreateLogger()) |> ignore
+    builder.Services.AddGiraffe() |> ignore
+    let app = builder.Build()
+    app.UseStaticFiles() |> ignore
+    app.UseGiraffe(webApp p)
+    app
