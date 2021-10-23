@@ -9,12 +9,12 @@ open Giraffe.ViewEngine
 open Serilog
 
 let private chapterSelect (manga: StoredManga) (chapter: Chapter) =
-    div [ attr "class" "control" ] [
-        div [ attr "class" "select"] [
-            select [ attr "id" "chapter-select" ] [
+    div [ _class "control" ] [
+        div [ _class "select"] [
+            select [ _id "chapter-select" ] [
                 for c in manga.Chapters ->
                     option [
-                        attr "value" c.Title
+                        _value c.Title
                         if c = chapter then attr "selected" ""
                     ] [ encodedText ($"Chapter %s{c.Title}") ]
             ]
@@ -22,11 +22,11 @@ let private chapterSelect (manga: StoredManga) (chapter: Chapter) =
     ]
 
 let private pageSelect (chapter: Chapter) =
-    div [ attr "class" "control" ] [
-        div [ attr "class" "select"] [
-            select [ attr "id" "page-select" ] [
+    div [ _class "control" ] [
+        div [ _class "select"] [
+            select [ _id "page-select" ] [
                 for p in chapter.Pages ->
-                    option [ attr "value" p.Name ] [
+                    option [ _value p.Name ] [
                         encodedText ($"Page %i{int p.Name}")
                     ]
             ]
@@ -34,10 +34,10 @@ let private pageSelect (chapter: Chapter) =
     ]
 
 let private homeButton =
-    div [ attr "class" "control" ] [
-        a [ attr "class" "button"; attr "href" "/" ] [
-            span [ attr "class" "icon" ] [
-                tag "svg" [ attr "style" "width: 24px; height: 24px"; attr "viewBox" "0 0 24 24"] [
+    div [ _class "control" ] [
+        a [ _class "button"; _href "/" ] [
+            span [ _class "icon" ] [
+                tag "svg" [ _style "width: 24px; height: 24px"; attr "viewBox" "0 0 24 24"] [
                     tag "path" [ attr "fill" "#000000"; attr "d" "M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" ] []
                 ]
             ]
@@ -45,7 +45,7 @@ let private homeButton =
     ]
 
 let private mangaTable (mangaListing: MangaListing list) (tableTitle: string) =
-    table [ attr "class" "table is-bordered is-striped" ] [
+    table [ _class "table is-bordered is-striped" ] [
         yield caption [ _class "is-size-3" ] [ encodedText tableTitle ]
         yield thead [] [
             tr [] [
@@ -62,9 +62,9 @@ let private mangaTable (mangaListing: MangaListing list) (tableTitle: string) =
                 | None -> MangaListing.firstPage m
 
             tr [] [
-                td [ _width "50%" ] [ a [ attr "href" link ] [ encodedText m.Title ] ]
+                td [ _width "50%" ] [ a [ _href link ] [ encodedText m.Title ] ]
                 td [ _width "10%" ] [ encodedText (m.Source.Direction.ToString()) ]
-                td [ _width "30%" ] [ a [ attr "href" m.Source.Url ] [ encodedText m.Source.Url ] ]
+                td [ _width "30%" ] [ a [ _href m.Source.Url ] [ encodedText m.Source.Url ] ]
                 td [ _width "10%" ] [ encodedText $"%i{1 + m.ChapterIndex}/%i{m.NumberOfChapters}" ]
             ]
     ]
@@ -72,11 +72,11 @@ let private mangaTable (mangaListing: MangaListing list) (tableTitle: string) =
 let private index (allManga: MangaListing list) (recentManga: MangaListing list) =
     html [] [
         head [] [
-            meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
-            meta [ attr "charset" "utf-8" ]
+            meta [ _name "viewport"; _content "width=device-width, initial-scale=1"]
+            meta [ _charset "utf-8" ]
             title [] [ encodedText "MangaSharp - Index" ]
-            link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
-            link [ attr "rel" "stylesheet"; attr "href" "/index.css" ]
+            link [ _rel "stylesheet"; _href "/assets/bulma.min.css" ]
+            link [ _rel "stylesheet"; _href "/index.css" ]
         ]
         body [] [
             mangaTable recentManga "Recent"
@@ -99,16 +99,16 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
 
     html [] [
         head [] [
-            meta [ attr "name" "viewport"; attr "content" "width=device-width, initial-scale=1"]
-            meta [ attr "charset" "utf-8" ]
+            meta [ _name "viewport"; _content "width=device-width, initial-scale=1"]
+            meta [ _charset "utf-8" ]
             title [] [ encodedText $"MangaSharp - %s{manga.Title} - %s{chapter.Title}" ]
-            link [ attr "rel" "stylesheet"; attr "href" "/assets/bulma.min.css" ]
+            link [ _rel "stylesheet"; _href "/assets/bulma.min.css" ]
             match manga.Source.Direction with
             | Horizontal ->
-                link [ attr "rel" "stylesheet"; attr "href" "/horizontal.css" ]
+                link [ _rel "stylesheet"; _href "/horizontal.css" ]
             | Vertical ->
-                link [ attr "rel" "stylesheet"; attr "href" "/vertical.css" ]
-            script [ attr "src" "/manga.js" ] []
+                link [ _rel "stylesheet"; _href "/vertical.css" ]
+            script [ _src "/manga.js" ] []
         ]
         body [
             if previousLink.IsSome then attr "data-previous-page" previousLink.Value
@@ -118,16 +118,16 @@ let private mangaPage (port: int) (manga: StoredManga) (chapter: Chapter) =
             attr "data-chapter" chapter.Title
             attr "data-port" (string port)
         ] [
-            div [ attr "id" "select-container"; attr "class" "field is-grouped" ] [
+            div [ _id "select-container"; _class "field is-grouped" ] [
                 homeButton
                 chapterSelect manga chapter
                 if manga.Source.Direction = Horizontal then pageSelect chapter
             ]
-            div [ attr "id" "image-container" ] [
+            div [ _id "image-container" ] [
                 for p in chapter.Pages ->
                     img [
                         attr "data-page" p.Name;
-                        attr "src" $"/manga/%s{HttpUtility.UrlEncode manga.Title}/%s{chapter.Title}/%s{p.File}"
+                        _src $"/manga/%s{HttpUtility.UrlEncode manga.Title}/%s{chapter.Title}/%s{p.File}"
                     ]
             ]
         ]
@@ -168,7 +168,7 @@ let private webApp (port: int) =
                 choose [
                     route "" >=> warbler (fun _ ->
                         let manga = Manga.fromTitle mangaTitle
-                        let chapter =  manga.Chapters |> List.find (fun ch -> ch.Title = c)
+                        let chapter = manga.Chapters |> List.find (fun ch -> ch.Title = c)
                         mangaPage port manga chapter
                     )
                     routef "/%s" (fun p ->
