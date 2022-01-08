@@ -250,17 +250,14 @@ let private providers = [
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
             taskResult {
                 let! chapterId = regexMatch (Regex(".*/chapter/(.*)")) url
-                let apiUrl = $"https://api.mangadex.org/chapter/%s{chapterId}"
-                let! json = tryDownloadStringAsync apiUrl
-                let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
-                let hash = doc.GetProperty("attributes").GetProperty("hash").GetString()
-                let pages =
-                    doc.GetProperty("attributes").GetProperty("data").EnumerateArray()
-                    |> Seq.map (fun el -> el.GetString())
                 let apiUrl = $"https://api.mangadex.org/at-home/server/%s{chapterId}"
                 let! json = tryDownloadStringAsync apiUrl
                 let doc = JsonDocument.Parse(json).RootElement
                 let baseUrl = doc.GetProperty("baseUrl").GetString()
+                let hash = doc.GetProperty("chapter").GetProperty("hash").GetString()
+                let pages =
+                    doc.GetProperty("chapter").GetProperty("data").EnumerateArray()
+                    |> Seq.map (fun el -> el.GetString())
                 let reqs =
                     pages
                     |> Seq.map (fun p -> Path.Combine(baseUrl, "data", hash, p) |> toHttpRequestMessageFunc)
