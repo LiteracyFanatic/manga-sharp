@@ -159,7 +159,7 @@ let private providers = [
         TitleExtractor = fun (url: string) (html: HtmlDocument) ->
             result {
                 let textInfo = CultureInfo("en-US", false).TextInfo
-                let! node = querySelector html ".manga-info h1"
+                let! node = querySelector html ".series-name a"
                 let title =
                     node
                     |> HtmlNode.directInnerText
@@ -169,16 +169,23 @@ let private providers = [
             }
         ChapterUrlsExtractor = fun (url: string) (html: HtmlDocument) ->
             result {
-                let! chapters = querySelectorAll html ".chapter"
+                let! chapters = querySelectorAll html ".list-chapters a"
                 let urls =
                     chapters
                     |> Seq.rev
-                    |> Seq.map (HtmlNode.attributeValue "href" >> resolveUrl url)
+                    |> Seq.map (HtmlNode.attributeValue "href")
                     |> Seq.distinct
                 return urls
             }
-        ChapterTitleExtractor = urlMatch (Regex("chapter-(\d+(-\d+)*)"))
-        ImageExtractor = extractImageUrls ".chapter-img"
+        ChapterTitleExtractor = urlMatch (Regex("ch(?:ap)?-(\d+)"))
+        ImageExtractor = fun (url: string) (html: HtmlDocument) ->
+            result {
+                let! nodes = querySelectorAll html "#chapter-content img"
+                let urls =
+                    nodes
+                    |> Seq.map (HtmlNode.attributeValue "data-src" >> toHttpRequestMessageFunc)
+                return urls
+            }
     }
 
     {
