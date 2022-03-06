@@ -251,7 +251,12 @@ let private providers = [
                 let apiUrl = $"https://api.mangadex.org/chapter/%s{chapterId}"
                 let! json = tryDownloadStringAsync apiUrl
                 let doc = JsonDocument.Parse(json).RootElement.GetProperty("data")
-                return doc.GetProperty("attributes").GetProperty("chapter").GetString()
+                let chapter = doc.GetProperty("attributes").GetProperty("chapter").GetString()
+                let title = doc.GetProperty("attributes").GetProperty("title").GetString()
+                if String.IsNullOrEmpty(chapter) then
+                    return title
+                else
+                    return chapter
             } |> Async.AwaitTask
             |> Async.RunSynchronously
         ImageExtractor = fun (url: string) (html: HtmlDocument) ->
