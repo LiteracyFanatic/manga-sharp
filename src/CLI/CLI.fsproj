@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <AssemblyName>manga</AssemblyName>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <IsWebConfigTransformDisabled>true</IsWebConfigTransformDisabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Util.fs" />
+    <Compile Include="Pages/Index.fs" />
+    <Compile Include="Pages/Read.fs" />
+    <Compile Include="ServiceCollectionExtensions.fs" />
+    <Compile Include="Server.fs" />
+    <Compile Include="Arguments.fs" />
+    <Compile Include="Application.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Argu" Version="6.1.1" />
+    <PackageReference Include="EntityFrameworkCore.FSharp" Version="6.0.6" />
+    <PackageReference Include="Flurl" Version="3.0.5" />
+    <PackageReference Include="Fsharp.data" Version="4.2.8" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="0.17.4" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.13.0" />
+    <PackageReference Include="Giraffe" Version="6.0.0" />
+    <PackageReference Include="Giraffe.ViewEngine" Version="2.0.0-alpha-1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.4" />
+    <PackageReference Include="Serilog.AspNetCore" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Database\Database.fsproj" />
+    <ProjectReference Include="..\Extractors\Extractors.fsproj" />
+  </ItemGroup>
+  <Target Name="SetGitTag" BeforeTargets="BeforeBuild">
+    <Exec Command="git describe --always" ConsoleToMSBuild="True" StandardOutputImportance="Low">
+      <Output PropertyName="GitTag" TaskParameter="ConsoleOutput" />
+    </Exec>
+    <ItemGroup>
+      <AssemblyMetadata Include="GitTag" Value="$(GitTag)" />
+    </ItemGroup>
+  </Target>
+</Project>

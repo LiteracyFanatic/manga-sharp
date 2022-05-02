@@ -1,4 +1,0 @@
-#!/bin/bash
-./build
-export ASPNETCORE_ENVIRONMENT=Development
-dotnet run --no-build -- "$@"

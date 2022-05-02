@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Util.fs" />
+    <Compile Include="MangaDexApi.fs" />
+    <Compile Include="IMangaExtractor.fs" />
+    <Compile Include="MangaDexExtractor.fs" />
+    <Compile Include="ManganatoExtractor.fs" />
+    <Compile Include="Manhwa18CCExtractor.fs" />
+    <Compile Include="Manhwa18Extractor.fs" />
+    <Compile Include="ManyToonExtractor.fs" />
+    <Compile Include="WebToonExtractor.fs" />
+    <Compile Include="Extractors/*.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Flurl" Version="3.0.5" />
+    <PackageReference Include="Fsharp.data" Version="4.2.8" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.13.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Database\Database.fsproj" />
+  </ItemGroup>
+
+</Project>

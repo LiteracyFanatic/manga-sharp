@@ -6,4 +6,5 @@ bin/
 .paket/
 paket-files/
 node_modules/
-wwwroot/assets/
+src/CLI/wwwroot/assets/
+dist/

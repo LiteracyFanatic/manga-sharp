@@ -1,5 +1,5 @@
 #!/bin/bash
 npm install
-mkdir -p wwwroot/assets
-cp node_modules/bulma/css/bulma.min.css wwwroot/assets/
-dotnet publish -c Release -r linux-x64 --no-self-contained
+mkdir -p src/CLI/wwwroot/assets
+cp node_modules/bulma/css/bulma.min.css src/CLI/wwwroot/assets/
+dotnet build src/CLI/

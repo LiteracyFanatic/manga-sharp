@@ -1,0 +1,21 @@
+#!/bin/bash
+version="$(git describe --always)"
+
+npm install
+mkdir -p src/CLI/wwwroot/assets
+cp node_modules/bulma/css/bulma.min.css src/CLI/wwwroot/assets/
+
+rm -rf dist
+mkdir dist
+
+dotnet publish -c Release -r linux-x64 --no-self-contained -o dist src/CLI/
+mv dist/manga "dist/manga-$version-linux-x64"
+dotnet publish -c Release -r linux-x64 --self-contained -o dist src/CLI/
+mv dist/manga "dist/manga-$version-linux-x64-self-contained"
+
+dotnet publish -c Release -r win-x64 --no-self-contained -o dist src/CLI/
+mv dist/manga.exe "dist/manga-$version-win-x64.exe"
+dotnet publish -c Release -r win-x64 --self-contained -o dist src/CLI/
+mv dist/manga.exe "dist/manga-$version-win-x64-self-contained.exe"
+
+sha256sum dist/* > "dist/manga-$version-checksums.txt"

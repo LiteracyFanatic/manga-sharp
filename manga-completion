@@ -45,7 +45,10 @@ _manga_completions() {
                 update)
                     case "$current" in
                         --*)
-                            _manga_complete_words '--title --all --help'
+                            _manga_complete_words '--all --help'
+                            ;;
+                        *)
+                            _manga_complete_lines "$(_manga_ls)"
                             ;;
                     esac
                     ;;
@@ -57,6 +60,11 @@ _manga_completions() {
                     esac
                     ;;
                 ls)
+                    case "$current" in
+                        --*)
+                            _manga_complete_words '--json'
+                            ;;
+                    esac
                     ;;
             esac
             ;;
