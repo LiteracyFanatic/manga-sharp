@@ -1,13 +1,16 @@
 namespace MangaSharp.CLI
 
+open System.IO
 open System.Collections.Generic
 open System.Linq
 open Microsoft.EntityFrameworkCore
 open Microsoft.Extensions.Logging
+open EntityFrameworkCore.FSharp.DbContextHelpers
 open Argu
 open MangaSharp.Database
 open MangaSharp.Database.MangaDomain
 open MangaSharp.Extractors
+open MangaSharp.Extractors.Util
 open MangaSharp.CLI.Arguments
 open MangaSharp.CLI.Util
 open Giraffe
@@ -105,6 +108,26 @@ type Application(
         let json = jsonSerializer.SerializeToString(manga)
         printfn $"%s{json}"
 
+    // Remove manga from database and associated files from disk
+    let rm (manga: Manga) =
+        let dir = Path.Combine(mangaData, manga.Title)
+        // Make sure we don't accidentally delete the whole manga directory if manga.Title is somehow empty
+        if dir = mangaData then
+            logger.LogError("Manga {Title} could not be found", manga.Title)
+            exit 1
+        else
+            try
+                db.Manga.Remove(manga) |> ignore
+                db.SaveChanges() |> ignore
+                logger.LogInformation("Removed {Title} from database.", manga.Title)
+                try
+                    Directory.Delete(dir, true)
+                    logger.LogInformation("Deleted {MangaDirectory}.", dir)
+                with
+                | e -> logger.LogError(e, "Couldn't delete {MangaDirectory}.", dir)
+            with
+            | e -> logger.LogError(e, "Something went wrong while removing {Title} from database.", manga.Title)
+
     member this.Download(args: ParseResults<DownloadArgs>) =
         if not (args.Contains(Url)) then
             args.Raise("Argument --url is required")
@@ -140,7 +163,7 @@ type Application(
                 .ToList()
                 |> List.ofSeq
         let manga =
-            match args.Contains(All), args.TryGetResult(UpdateArgs.Title) with
+            match args.Contains(UpdateArgs.All), args.TryGetResult(UpdateArgs.Title) with
             | true, None -> allManga
             | true, _ ->
                 args.Raise("Cannot specify --all and a manga title at the same time")
@@ -174,3 +197,19 @@ type Application(
             lsJson ()
         else
             lsPlain ()
+
+    member this.Rm(args: ParseResults<RmArgs>) =
+        match args.Contains(RmArgs.All), args.TryGetResult(RmArgs.Title) with
+        | true, None ->
+            db.Manga
+                .OrderBy(fun m -> m.Title)
+                .ToList()
+                .ForEach(rm)
+        | true, _ -> args.Raise("Cannot specify --all and a manga title at the same time")
+        | false, None -> args.Raise("Either --all or a manga title must be specified")
+        | false, Some title ->
+            match db.Manga.TryFirst(fun m -> m.Title = title) with
+            | Some m -> rm m
+            | None ->
+                logger.LogError("Manga {Title} could not be found", title)
+                exit 1

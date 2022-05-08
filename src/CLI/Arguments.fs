@@ -41,11 +41,21 @@ type LsArgs =
             match this with
             | Json -> "format as JSON."
 
+type RmArgs =
+    | [<MainCommand; Unique>] Title of string
+    | All
+    interface IArgParserTemplate with
+        member this.Usage =
+            match this with
+            | Title _ -> "the manga to remove."
+            | All -> "remove all manga."
+
 type Args =
     | [<CliPrefix(CliPrefix.None)>] Download of ParseResults<DownloadArgs>
     | [<CliPrefix(CliPrefix.None)>] Update of ParseResults<UpdateArgs>
     | [<CliPrefix(CliPrefix.None)>] Read of ParseResults<ReadArgs>
     | [<CliPrefix(CliPrefix.None)>] Ls of ParseResults<LsArgs>
+    | [<CliPrefix(CliPrefix.None)>] Rm of ParseResults<RmArgs>
     | [<SubCommand>] Version
     interface IArgParserTemplate with
         member this.Usage =
@@ -54,4 +64,5 @@ type Args =
             | Update _ -> "update an existing manga."
             | Read _ -> "open manga to read in an external application."
             | Ls _ -> "list the downloaded manga."
+            | Rm _ -> "remove manga."
             | Version -> "display the version info."

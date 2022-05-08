@@ -68,7 +68,7 @@ let read (args: ParseResults<ReadArgs>) =
     let manga =
         using (server.Services.CreateScope()) (fun scope ->
             let db = scope.ServiceProvider.GetRequiredService<MangaContext>()
-            match args.Contains(Last), args.TryGetResult(Title) with
+            match args.Contains(ReadArgs.Last), args.TryGetResult(ReadArgs.Title) with
             | true, Some _ ->
                 args.Raise("Cannot specify --last and --title at the same time.")
             | true, None ->
@@ -109,6 +109,7 @@ let main argv =
     | Update updateArgs -> (getCliApp ()).Update(updateArgs)
     | Read readArgs -> read readArgs
     | Ls lsArgs -> (getCliApp ()).Ls(lsArgs)
+    | Rm rmArgs -> (getCliApp ()).Rm(rmArgs)
     | Version ->
         let version =
             Assembly.GetEntryAssembly()
