@@ -1,7 +1,6 @@
 namespace MangaSharp.Extractors
 
 open System
-open System.IO
 open FSharp.Data
 open System.Net.Http
 open System.Text.RegularExpressions
@@ -16,6 +15,7 @@ type Manwha18CCExtractor(
     httpFactory: IHttpClientFactory,
     db: MangaContext,
     mangaRepository: MangaRepository,
+    pageSaver: PageSaver,
     logger: ILogger<Manwha18CCExtractor>) =
 
     let hc = httpFactory.CreateClient()
@@ -44,22 +44,12 @@ type Manwha18CCExtractor(
             return mergedChapters
         }
 
-    let downloadImage (chapterFolder: string) (i: int) (img: string) =
-        taskResult {
-            let path = urlToFilePath chapterFolder img i
-            use! downloadStream = hc.GetStreamAsync(img)
-            do! saveStreamToFileAsync path downloadStream
-            return path
-        }
-
     let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) (chapterUrl: string) =
         taskResult {
             let! imgs = extractImageUrls ".read-content img" chapterUrl chapterHtml
-            let folder = Path.Combine(mangaData, mangaTitle, chapterTitle)
-            Directory.CreateDirectory(folder) |> ignore
             for i, img in Seq.indexed imgs do
-                let! path = downloadImage folder i img
-                let newPage = Page(Name = Path.GetFileNameWithoutExtension(path), File = path)
+                use! imageStream = hc.GetStreamAsync(img)
+                let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
                 newChapter.Pages.Add(newPage)
         }
 

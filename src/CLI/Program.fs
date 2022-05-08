@@ -7,7 +7,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Configuration
 open Polly
 open System
-open System.IO
 open System.Linq
 open System.Reflection
 open Serilog
@@ -48,6 +47,7 @@ let getCliApp () =
             hc.Timeout <- TimeSpan.FromSeconds(20.))
             .AddTransientHttpErrorPolicy(fun policyBuilder ->
                 policyBuilder.WaitAndRetryAsync(3, fun n -> TimeSpan.FromSeconds(2 ** n)))
+        services.AddSingleton<PageSaver>()
         services.AddTransient<MangaDexApi>()
         services.AddTransient<IMangaExtractor, MangaDexExtractor>()
         services.AddTransient<IMangaExtractor, ManganatoExtractor>()
@@ -98,7 +98,6 @@ let read (args: ParseResults<ReadArgs>) =
 
 [<EntryPoint>]
 let main argv =
-    Directory.CreateDirectory(mangaData)
     let parser =
         ArgumentParser.Create<Args>(
             programName="manga",

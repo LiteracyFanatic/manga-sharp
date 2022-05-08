@@ -16,6 +16,7 @@ type ManyToonExtractor(
     httpFactory: IHttpClientFactory,
     db: MangaContext,
     mangaRepository: MangaRepository,
+    pageSaver: PageSaver,
     logger: ILogger<ManyToonExtractor>) =
 
     let hc = httpFactory.CreateClient()
@@ -55,14 +56,6 @@ type ManyToonExtractor(
             return mergedChapters
         }
 
-    let downloadImage (chapterFolder: string) (i: int) (img: string) =
-        taskResult {
-            let path = urlToFilePath chapterFolder img i
-            use! downloadStream = hc.GetStreamAsync(img)
-            do! saveStreamToFileAsync path downloadStream
-            return path
-        }
-
     let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) (chapterUrl: string) =
         taskResult {
             let! nodes = querySelectorAll chapterHtml ".wp-manga-chapter-img"
@@ -73,11 +66,9 @@ type ManyToonExtractor(
                 |> Seq.filter (fun src -> not (src.StartsWith("data")))
                 |> Seq.distinct
                 |> Seq.map (resolveUrl chapterUrl)
-            let folder = Path.Combine(mangaData, mangaTitle, chapterTitle)
-            Directory.CreateDirectory(folder) |> ignore
             for i, img in Seq.indexed imgs do
-                let! path = downloadImage folder i img
-                let newPage = Page(Name = Path.GetFileNameWithoutExtension(path), File = path)
+                use! imageStream = hc.GetStreamAsync(img)
+                let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
                 newChapter.Pages.Add(newPage)
         }
 

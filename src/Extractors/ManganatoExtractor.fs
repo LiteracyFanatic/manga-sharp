@@ -1,7 +1,6 @@
 namespace MangaSharp.Extractors
 
 open System
-open System.IO
 open FSharp.Data
 open System.Net.Http
 open System.Text.RegularExpressions
@@ -16,6 +15,7 @@ type ManganatoExtractor(
     httpFactory: IHttpClientFactory,
     db: MangaContext,
     mangaRepository: MangaRepository,
+    pageSaver: PageSaver,
     logger: ILogger<ManganatoExtractor>) =
 
     let hc = httpFactory.CreateClient()
@@ -44,24 +44,14 @@ type ManganatoExtractor(
             return mergedChapters
         }
 
-    let downloadImage (chapterFolder: string) (i: int) (img: string) =
-        taskResult {
-            let path = urlToFilePath chapterFolder img i
-            use! downloadStream = hc.GetStreamAsync(img)
-            do! saveStreamToFileAsync path downloadStream
-            return path
-        }
-
-    let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) (chapterUrl: string) =
+    let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) =
         taskResult {
             let! imgs =
                 querySelectorAll chapterHtml ".container-chapter-reader img"
                 |> Result.map (List.map (HtmlNode.attributeValue "src"))
-            let folder = Path.Combine(mangaData, mangaTitle, chapterTitle)
-            Directory.CreateDirectory(folder) |> ignore
             for i, img in List.indexed imgs do
-                let! path = downloadImage folder i img
-                let newPage = Page(Name = Path.GetFileNameWithoutExtension(path), File = path)
+                use! imageStream = hc.GetStreamAsync(img)
+                let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
                 newChapter.Pages.Add(newPage)
         }
 
@@ -80,7 +70,7 @@ type ManganatoExtractor(
                     chapterTitle,
                     (i + 1),
                     newChapters.Length)
-                do! downloadChapter newChapter chapterHtml chapterTitle manga.Title newChapter.Url
+                do! downloadChapter newChapter chapterHtml chapterTitle manga.Title
                 newChapter.Title <- Some chapterTitle
                 newChapter.DownloadStatus <- Downloaded
                 let! _ = db.SaveChangesAsync()

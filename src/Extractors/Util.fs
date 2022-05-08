@@ -10,15 +10,8 @@ open System.Diagnostics
 open FSharp.Data
 open FsToolkit.ErrorHandling
 
-let saveStreamToFileAsync (path: string) (downloadStream: Stream) =
-    task {
-        use fileStream = new FileStream(path, FileMode.Create)
-        do! downloadStream.CopyToAsync(fileStream)
-    }
-
-let urlToFilePath (chapterFolder: string) (url: string) (i: int) =
-    let ext = Path.GetExtension(Uri(url).LocalPath)
-    Path.ChangeExtension(Path.Combine(chapterFolder, $"%03i{i + 1}"), ext)
+let private dataHome = Environment.GetFolderPath(SpecialFolder.LocalApplicationData)
+let mangaData = Path.Combine(dataHome, "manga")
 
 let tryDownloadStringAsync (hc: HttpClient) (url: string) =
     task {
@@ -124,6 +117,3 @@ let extractImageUrls (cssQuery: string) = fun (url: string) (html: HtmlDocument)
         let! nodes = querySelectorAll html cssQuery
         return Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url) nodes
     }
-
-let dataHome = Environment.GetFolderPath(SpecialFolder.LocalApplicationData)
-let mangaData = Path.Combine(dataHome, "manga")

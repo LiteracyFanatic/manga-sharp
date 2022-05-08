@@ -17,6 +17,7 @@ type MangaDexExtractor(
     httpFactory: IHttpClientFactory,
     db: MangaContext,
     mangaRepository: MangaRepository,
+    pageSaver: PageSaver,
     mangaDexApi: MangaDexApi,
     logger: ILogger<MangaDexExtractor>) =
 
@@ -51,17 +52,16 @@ type MangaDexExtractor(
             return mergedChapters
         }
 
-    let downloadImage (chapterFolder: string) (i: int) (img: string) =
+    let downloadPage (mangaTitle: string) (chapterTitle: string) (i: int) (img: string) =
         taskResult {
-            let path = urlToFilePath chapterFolder img i
             let sw = Stopwatch()
             sw.Start()
             try
                 use! res = hc.GetAsync(img)
                 res.EnsureSuccessStatusCode() |> ignore
-                use! downloadStream = res.Content.ReadAsStreamAsync()
+                use! imageStream = res.Content.ReadAsStreamAsync()
                 sw.Stop()
-                do! saveStreamToFileAsync path downloadStream
+                let! page = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
                 let cached =
                     if res.Headers.Contains("X-Cache") then
                         res.Headers.GetValues("X-Cache")
@@ -72,11 +72,11 @@ type MangaDexExtractor(
                     url = img
                     success = true
                     cached = cached
-                    bytes = downloadStream.Length
+                    bytes = imageStream.Length
                     duration = sw.ElapsedMilliseconds
                 }
                 do! mangaDexApi.PostHealthReportAsync(request)
-                return path
+                return page
             with
             | _ ->
                 sw.Stop()
@@ -93,15 +93,12 @@ type MangaDexExtractor(
 
     let downloadChapter (newChapter: Chapter) (chapterTitle: string) (chapterId: string) (mangaTitle: string) =
         taskResult {
-            let folder = Path.Combine(mangaData, mangaTitle, chapterTitle)
-            Directory.CreateDirectory(folder) |> ignore
             let! res = mangaDexApi.GetAtHomeAsync(chapterId)
             let imgs =
                 res.chapter.data
                 |> Seq.map (fun p -> Path.Combine(res.baseUrl, "data", res.chapter.hash, p))
             for i, img in Seq.indexed imgs do
-                let! path = downloadImage folder i img
-                let newPage = Page(Name = Path.GetFileNameWithoutExtension(path), File = path)
+                let! newPage = downloadPage mangaTitle chapterTitle i img
                 newChapter.Pages.Add(newPage)
         }
 
