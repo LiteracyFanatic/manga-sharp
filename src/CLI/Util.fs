@@ -5,6 +5,9 @@ open System.Text.RegularExpressions
 open System.Globalization
 open MangaSharp.Database.MangaDomain
 
+let private normalize (form: NormalizationForm) (input: string) =
+    input.Normalize(form)
+
 // Converts characters such as "ā" to "a". This is not a correct romanization of
 // Japanese text (e.g. "obā-san" becomes "oba-san" when it should really be
 // "obaa-san"), but it is better than stripping the character from the URL
@@ -12,8 +15,10 @@ open MangaSharp.Database.MangaDomain
 // elongations correctly without the original kana; depending on the word, "ō"
 // may be a rendering of "oo" or "ou".
 let private stripDiacritics (input: string) =
-    input.Normalize(NormalizationForm.FormD)
+    input
+    |> normalize NormalizationForm.FormD
     |> String.filter (fun c -> CharUnicodeInfo.GetUnicodeCategory(c) <> UnicodeCategory.NonSpacingMark)
+    |> normalize NormalizationForm.FormC
 
 let private replace (pattern: string) (replacement: string) (input: string) =
     Regex.Replace(input, pattern, replacement)
