@@ -10,5 +10,12 @@ img {
 
 #select-container {
     position: fixed;
-    margin: 10px;
+    z-index: 1;
+    top: 10px;
+    left: 10px;
+}
+
+#message-container {
+    position: relative;
+    height: 100vh;
 }

@@ -23,7 +23,7 @@ let mangaTable (manga: Manga list) (tableTitle: string) =
         for m in manga ->
             let chapters =
                 m.Chapters
-                |> Seq.filter (fun c -> c.DownloadStatus = Downloaded)
+                |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
                 |> Seq.sortBy (fun c -> c.Index)
             let chapterIndex =
                 match m.BookmarkChapterId with

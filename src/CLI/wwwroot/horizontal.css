@@ -30,3 +30,8 @@ img {
     top: 10px;
     left: 10px;
 }
+
+#message-container {
+    position: relative;
+    height: 100vh;
+}

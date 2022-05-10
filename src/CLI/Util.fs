@@ -40,16 +40,16 @@ let getFirstPage (manga: Manga) =
 let tryPreviousChapter (manga: Manga) (chapter: Chapter) =
     let chapters =
         manga.Chapters
-        |> Seq.filter (fun m -> m.DownloadStatus = Downloaded)
-        |> Seq.sortBy (fun m -> m.Index)
+        |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+        |> Seq.sortBy (fun c -> c.Index)
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
     Seq.tryItem (i - 1) chapters
 
 let tryNextChapter (manga: Manga) (chapter: Chapter) =
     let chapters =
         manga.Chapters
-        |> Seq.filter (fun m -> m.DownloadStatus = Downloaded)
-        |> Seq.sortBy (fun m -> m.Index)
+        |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+        |> Seq.sortBy (fun c -> c.Index)
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
     Seq.tryItem (i + 1) chapters
 

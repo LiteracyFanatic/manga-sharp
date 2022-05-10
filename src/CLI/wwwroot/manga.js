@@ -16,16 +16,18 @@ async function setBookmark() {
 
 async function hashChangeHandler() {
     const page = window.location.hash.slice(1);
-    const pageId = document.querySelector(`img[data-page="${page}"]`).dataset.pageId;
-
-    const imgs = Array.from(document.images);
-    imgs.forEach(i => i.classList.remove("active"));
-    imgs.find(i => i.dataset.pageId === pageId).classList.add("active");
-
-    const options = Array.from(document.querySelectorAll("#page-select option"));
-    options.forEach(o => o.selected = false);
-    options.find(o => o.value === pageId).selected = true;
-
+    if (page) {
+        const pageId = document.querySelector(`img[data-page="${page}"]`).dataset.pageId;
+    
+        const imgs = Array.from(document.images);
+        imgs.forEach(i => i.classList.remove("active"));
+        imgs.find(i => i.dataset.pageId === pageId).classList.add("active");
+    
+        const options = Array.from(document.querySelectorAll("#page-select option"));
+        options.forEach(o => o.selected = false);
+        options.find(o => o.value === pageId).selected = true;
+    
+    }
     await setBookmark();
 }
 
@@ -101,11 +103,18 @@ async function init() {
         if (window.location.hash) {
             await hashChangeHandler();
         } else {
-            window.location.hash = document.images[0].dataset.page;
+            const hash = document.images[0]?.dataset?.page || "";
+            if (hash) {
+                window.location.hash = hash;
+            } else {
+                await setBookmark();
+            }
         }
 
         const pageSelect = document.getElementById("page-select");
-        pageSelect.addEventListener("change", pageSelectHandler);
+        if (pageSelect) {
+            pageSelect.addEventListener("change", pageSelectHandler);
+        }
     } else {
         await setBookmark();
     }

@@ -12,14 +12,24 @@ open MangaSharp.Database
 open MangaSharp.Database.MangaDomain
 
 let chapterSelect (manga: Manga) (chapter: Chapter) =
+    let chapters =
+        manga.Chapters
+            .Where(fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+            .OrderBy(fun c -> c.Index)
     div [ _class "control" ] [
         div [ _class "select"] [
             select [ _id "chapter-select" ] [
-                for c in manga.Chapters.Where(fun c -> c.DownloadStatus = Downloaded).OrderBy(fun c -> c.Index) ->
+                for c in chapters ->
                     option [
                         _value $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}"
-                        if c.Id = chapter.Id then attr "selected" ""
-                    ] [ str ($"Chapter %s{c.Title.Value}") ]
+                        if c.Id = chapter.Id then _selected
+                        if c.DownloadStatus = Archived then _class "has-text-grey"
+                    ] [
+                        if c.DownloadStatus = Archived then
+                            str $"Chapter %s{c.Title.Value} (Archived)"
+                        else
+                            str $"Chapter %s{c.Title.Value}"
+                    ]
             ]
         ]
     ]
@@ -54,11 +64,24 @@ let view (manga: Manga) (chapter: Chapter) =
         | Vertical -> ""
     let previousLink =
         tryPreviousChapter manga chapter
-        |> Option.map (fun c -> $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{getHash (c.Pages.OrderBy(fun p -> p.Name).Last())}")
+        |> Option.map (fun c ->
+            let hash =
+                c.Pages
+                |> Seq.sortBy (fun p -> p.Name)
+                |> Seq.tryLast
+                |> Option.map getHash
+                |> Option.defaultValue ""
+            $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{hash}")
     let nextLink =
         tryNextChapter manga chapter
-        |> Option.map (fun c -> $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{getHash (c.Pages.OrderBy(fun p -> p.Name).First())}")
-
+        |> Option.map (fun c ->
+            let hash =
+                c.Pages
+                |> Seq.sortBy (fun p -> p.Name)
+                |> Seq.tryHead
+                |> Option.map getHash
+                |> Option.defaultValue ""
+            $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{hash}")
     html [] [
         head [] [
             meta [ _name "viewport"; _content "width=device-width, initial-scale=1"]
@@ -83,16 +106,23 @@ let view (manga: Manga) (chapter: Chapter) =
             div [ _id "select-container"; _class "field is-grouped" ] [
                 homeButton
                 chapterSelect manga chapter
-                if manga.Direction = Horizontal then pageSelect chapter
+                if manga.Direction = Horizontal && chapter.Pages.Count > 0 then pageSelect chapter
             ]
-            div [ _id "image-container" ] [
-                for p in chapter.Pages.OrderBy(fun p -> p.Name) ->
-                    img [
-                        attr "data-page" p.Name
-                        attr "data-page-id"(string p.Id)
-                        _src $"/pages/%A{p.Id}"
+            if chapter.DownloadStatus = Archived then
+                div [ _id "message-container"; _class "is-flex is-flex-direction-column is-justify-content-center" ] [
+                    p [ _id "message"; _class "is-size-3 has-text-centered has-text-white" ] [
+                        str $"Chapter %s{chapter.Title.Value} is archived."
                     ]
-            ]
+                ]
+            else
+                div [ _id "image-container" ] [
+                    for p in chapter.Pages.OrderBy(fun p -> p.Name) ->
+                        img [
+                            attr "data-page" p.Name
+                            attr "data-page-id"(string p.Id)
+                            _src $"/pages/%A{p.Id}"
+                        ]
+                ]
         ]
     ]
 

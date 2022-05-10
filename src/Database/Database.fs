@@ -19,6 +19,7 @@ module rec MangaDomain =
     type DownloadStatus =
         | NotDownloaded
         | Downloaded
+        | Archived
         | Ignored
 
     type Manga() =

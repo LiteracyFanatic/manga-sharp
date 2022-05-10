@@ -110,6 +110,8 @@ let main argv =
     | Read readArgs -> read readArgs
     | Ls lsArgs -> (getCliApp ()).Ls(lsArgs)
     | Rm rmArgs -> (getCliApp ()).Rm(rmArgs)
+    | Archive archiveArgs -> (getCliApp ()).Archive(archiveArgs)
+    | Unarchive unarchiveArgs -> (getCliApp ()).Unarchive(unarchiveArgs)
     | Version ->
         let version =
             Assembly.GetEntryAssembly()
