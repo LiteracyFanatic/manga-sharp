@@ -2,7 +2,7 @@
 
 ## About
 
-MangaSharp is a CLI that supports downloading manga and other comics from a variety of sites. It also includes a lightweight web interface for reading locally saved manga. Give it a try if you like the sound of fullscreen images on a black background with minimal distracting UI elements.
+MangaSharp is a CLI that supports downloading manga and other comics from a variety of sites. All images will be converted to the WebP format to optimize disk usage while still maintaining high quality. It also includes a lightweight web interface for reading locally saved manga. Give it a try if you like the sound of fullscreen images on a black background with minimal distracting UI elements.
 
 ## Usage
 
