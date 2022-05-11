@@ -1,3 +1,0 @@
-#!/bin/bash
-install -m 755 dist/manga-*-linux-x64 /usr/bin/manga
-install -m 544 manga-completion /usr/share/bash-completion/completions/manga

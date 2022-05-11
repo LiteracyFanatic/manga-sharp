@@ -1,2 +1,0 @@
-#!/bin/bash
-rm -rf /usr/bin/manga /usr/share/bash-completion/completions/manga
