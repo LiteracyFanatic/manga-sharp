@@ -2,6 +2,11 @@ body {
     background: black;
 }
 
+#image-container {
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
 img {
     margin: auto;
     display: block;

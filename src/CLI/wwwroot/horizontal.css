@@ -9,6 +9,8 @@ body {
 #image-container {
     position: relative;
     height: 100vh;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 img {

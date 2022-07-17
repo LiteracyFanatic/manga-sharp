@@ -96,6 +96,15 @@ function keyHandler(e) {
     }
 }
 
+function clickHandler(e) {
+    if (e.clientX < this.clientWidth / 3) {
+        previousHandler();
+    } else if (e.clientX > this.clientWidth * 2 / 3) {
+        nextHandler();
+    }
+    e.preventDefault();
+}
+
 async function init() {
     if (document.body.dataset.direction === "Horizontal") {
         window.addEventListener("hashchange", hashChangeHandler);
@@ -114,6 +123,11 @@ async function init() {
         const pageSelect = document.getElementById("page-select");
         if (pageSelect) {
             pageSelect.addEventListener("change", pageSelectHandler);
+        }
+
+        const imageContainer = document.getElementById("image-container");
+        if (imageContainer) {
+            imageContainer.addEventListener("click", clickHandler);
         }
     } else {
         await setBookmark();
