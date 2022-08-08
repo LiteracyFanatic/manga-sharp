@@ -20,9 +20,11 @@ type MangaDexMangaResponse = {
         attributes: {|
             title: {|
                 en: string option
+                ja: string option
             |}
             altTitles: {|
                 en: string option
+                ja: string option
             |}[]
         |}
     |}

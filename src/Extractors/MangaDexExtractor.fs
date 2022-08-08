@@ -134,9 +134,13 @@ type MangaDexExtractor(
                 let! res = mangaDexApi.GetMangaAsync(mangaId)
                 let title =
                     res.data.attributes.title.en
+                    |> Option.orElseWith (fun () ->
+                        res.data.attributes.altTitles
+                        |> Seq.tryPick (fun altTitle -> altTitle.en))
+                    |> Option.orElse res.data.attributes.title.ja
                     |> Option.defaultWith (fun () ->
                         res.data.attributes.altTitles
-                        |> Seq.pick (fun altTitle -> altTitle.en))
+                        |> Seq.pick (fun altTitle -> altTitle.ja))
                 let! manga = mangaRepository.GetOrCreateAsync(title, direction, url)
                 let! chapters = getChaptersAsync mangaId manga
                 manga.Chapters <- chapters
