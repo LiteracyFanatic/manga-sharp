@@ -1,5 +1,8 @@
 #!/bin/bash
-npm install
-mkdir -p src/CLI/wwwroot/assets
-cp node_modules/bulma/css/bulma.min.css src/CLI/wwwroot/assets/
+pushd src/Client/ || exit
+yarn build
+popd || exit
+rm -r src/CLI/wwwroot/
+mkdir -p src/CLI/wwwroot/
+cp -R src/Client/dist/* src/CLI/wwwroot/
 dotnet build src/CLI/

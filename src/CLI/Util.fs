@@ -56,7 +56,7 @@ let tryNextChapter (manga: Manga) (chapter: Chapter) =
 let getBookmarkUrl (manga: Manga) =
     match manga.BookmarkChapter, manga.BookmarkPage with
     | Some chapter, Some page ->
-        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}#%s{page.Name}"
+        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}?page=%s{page.Name}"
     | Some chapter, None ->
         $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
     | None, None
