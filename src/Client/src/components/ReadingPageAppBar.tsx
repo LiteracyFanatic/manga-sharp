@@ -1,11 +1,14 @@
 import { Home } from "@mui/icons-material";
 import {
+    alpha,
     AppBar,
     Button,
     MenuItem,
     Stack,
     TextField,
-    Toolbar
+    Toolbar,
+    useMediaQuery,
+    useTheme
 } from "@mui/material";
 import { Link } from "react-router-dom";
 
@@ -20,12 +23,18 @@ interface ReadingPageAppBarProps {
 }
 
 export default function ReadingPageAppBar(props: ReadingPageAppBarProps) {
+    const theme = useTheme();
+    const isLarge = useMediaQuery(theme.breakpoints.up("lg"));
     return (
         <HideOnScroll>
             <AppBar
                 sx={{
-                    opacity: 0.9
+                    background: theme => ({
+                        xs: alpha(theme.palette.background.default, .9),
+                        lg: "transparent"
+                    })
                 }}
+                elevation={isLarge ? 0 : undefined}
             >
                 <Toolbar>
                     <Stack
