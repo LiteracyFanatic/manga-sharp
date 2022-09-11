@@ -183,7 +183,6 @@ module WebApp =
             return! json response next ctx
         }
 
-
     let serveSpa: HttpHandler =
         fun next ctx -> task {
             let provider = ctx.GetService<IFileProvider>()
@@ -194,7 +193,7 @@ module WebApp =
     let endpoints =
         [
             GET [
-                routef "/pages/%O" servePage
+                routef "/pages/%O" (fun id -> privateResponseCaching (int (TimeSpan.FromDays(365).TotalSeconds)) None >=> servePage id)
             ]
             subRoute "/api" [
                 GET [

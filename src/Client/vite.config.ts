@@ -7,7 +7,8 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
-            includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
+            registerType: "autoUpdate",
+            includeAssets: ["favicon.ico", "apple-touch-icon.png"],
             manifest: {
                 name: "MangaSharp",
                 short_name: "MangaSharp",
@@ -37,7 +38,15 @@ export default defineConfig({
                     }
                 ]
             },
-            injectRegister: "script"
+            workbox: {
+                globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+                runtimeCaching: [
+                    {
+                        urlPattern: ({ url }) => url.pathname.startsWith("/pages/"),
+                        handler: "CacheFirst"
+                    }
+                ]
+            }
         })
     ],
     server: {
