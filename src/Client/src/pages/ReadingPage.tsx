@@ -1,17 +1,12 @@
-import {
-    Box,
-    CircularProgress,
-    Container,
-    LinearProgress,
-    Typography
-} from "@mui/material";
+import { Box, CircularProgress, Container, Typography } from "@mui/material";
 import { Image } from "mui-image";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useKey } from "react-use";
 
 import { ChapterGetResponse, setBookmark, useChapter } from "../Api";
 import ReadingPageAppBar from "../components/ReadingPageAppBar";
+import ReadingPageStepper from "../components/ReadingPageStepper";
 
 export default function ReadingPage() {
     const { chapterId } = useParams();
@@ -80,6 +75,15 @@ export default function ReadingPage() {
                 onClickNext(chapter);
             }
             e.preventDefault();
+        }
+    }
+
+    function onChangeStep(page: number) {
+        if (chapter.data) {
+            setSearchParams({
+                ...Object.fromEntries(searchParams.entries()),
+                page: chapter.data.Pages[page].Name
+            });
         }
     }
 
@@ -153,7 +157,6 @@ export default function ReadingPage() {
                             onChangePageSelect={onChangePageSelect}
                         />
                         <Box
-                            onClick={e => onClick(chapterData, e)}
                             sx={{
                                 width: "100%",
                                 maxWidth: "100vw",
@@ -161,27 +164,39 @@ export default function ReadingPage() {
                                 userSelect: "none",
                                 display: "flex",
                                 justifyContent: chapterData.Direction === "Horizontal" ? "center" : "start",
-                                flexDirection: "column",
-                                alignItems: "center"
+                                flexDirection: "column"
                             }}
                         >
-                            {chapterData.Pages.map((page, i) => (
-                                <Image
-                                    key={page.Id}
-                                    src={`/pages/${page.Id}`}
-                                    wrapperStyle={getWrapperStyles(i)}
-                                    fit={chapterData.Direction === "Horizontal" ? "contain" : "cover"}
-                                    showLoading={<CircularProgress />}
-                                    // @ts-ignore
-                                    draggable={false}
-                                />
-                            ))}
+                            <Box
+                                onClick={e => onClick(chapterData, e)}
+                                sx={{
+                                    width: "100%",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center"
+
+                                }}
+                            >
+                                {chapterData.Pages.map((page, i) => (
+                                    <Image
+                                        key={page.Id}
+                                        src={`/pages/${page.Id}`}
+                                        wrapperStyle={getWrapperStyles(i)}
+                                        fit={chapterData.Direction === "Horizontal" ? "contain" : "cover"}
+                                        showLoading={<CircularProgress />}
+                                        // @ts-ignore
+                                        draggable={false}
+                                    />
+                                ))}
+                            </Box>
                             {chapterData.Direction === "Horizontal" &&
-                                <LinearProgress
-                                    variant="determinate"
-                                    value={100 * (currentPageIndex + 1) / chapterData.Pages.length}
+                                <ReadingPageStepper
+                                    currentPage={currentPageIndex}
+                                    numberOfPages={chapterData.Pages.length}
+                                    onChangeStep={onChangeStep}
                                     sx={{
-                                        width: "100%"
+                                        width: "100%",
+                                        height: progressBarHeight
                                     }}
                                 />}
                         </Box>
