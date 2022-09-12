@@ -1,5 +1,4 @@
 import { Box, CircularProgress, Container, Typography } from "@mui/material";
-import { Image } from "mui-image";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useKey } from "react-use";
@@ -7,6 +6,7 @@ import { useKey } from "react-use";
 import { ChapterGetResponse, setBookmark, useChapter } from "../Api";
 import ReadingPageAppBar from "../components/ReadingPageAppBar";
 import ReadingPageStepper from "../components/ReadingPageStepper";
+import LazyImage from "./LazyImage";
 
 export default function ReadingPage() {
     const { chapterId } = useParams();
@@ -174,18 +174,14 @@ export default function ReadingPage() {
                                     display: "flex",
                                     flexDirection: "column",
                                     alignItems: "center"
-
                                 }}
                             >
                                 {chapterData.Pages.map((page, i) => (
-                                    <Image
+                                    <LazyImage
                                         key={page.Id}
                                         src={`/pages/${page.Id}`}
                                         wrapperStyle={getWrapperStyles(i)}
                                         fit={chapterData.Direction === "Horizontal" ? "contain" : "cover"}
-                                        showLoading={<CircularProgress />}
-                                        // @ts-ignore
-                                        draggable={false}
                                         width={page.Width}
                                         height={page.Height}
                                     />
