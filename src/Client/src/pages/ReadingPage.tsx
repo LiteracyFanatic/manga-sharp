@@ -186,6 +186,8 @@ export default function ReadingPage() {
                                         showLoading={<CircularProgress />}
                                         // @ts-ignore
                                         draggable={false}
+                                        width={page.Width}
+                                        height={page.Height}
                                     />
                                 ))}
                             </Box>

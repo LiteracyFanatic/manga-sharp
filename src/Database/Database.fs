@@ -124,6 +124,8 @@ module rec MangaDomain =
         member val Id: Guid = Unchecked.defaultof<_> with get, set
         member val Name: string = Unchecked.defaultof<_> with get, set
         member val File: string = Unchecked.defaultof<_> with get, set
+        member val Width: int = Unchecked.defaultof<_> with get, set
+        member val Height: int = Unchecked.defaultof<_> with get, set
         member val ChapterId: Guid = Unchecked.defaultof<_> with get, set
         member val Chapter: Chapter = Unchecked.defaultof<_> with get, set
 

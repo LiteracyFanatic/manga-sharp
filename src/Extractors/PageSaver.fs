@@ -31,6 +31,7 @@ module private PageSaver =
                 "Converting image to WebP and saving to {Path}.",
                 path)
             do! image.SaveAsWebpAsync(path)
+            return image.Width, image.Height
         }
 
     let private getImagePath (chapterFolder: string) (i: int) =
@@ -41,8 +42,12 @@ module private PageSaver =
             let folder = Path.Combine(mangaData, mangaTitle, chapterTitle)
             Directory.CreateDirectory(folder) |> ignore
             let imagePath = getImagePath folder imageNumber
-            do! saveImageAsWebpAsync logger imagePath imageStream
-            return Page(Name = Path.GetFileNameWithoutExtension(imagePath), File = imagePath)
+            let! (width, height) = saveImageAsWebpAsync logger imagePath imageStream
+            return Page(
+                Name = Path.GetFileNameWithoutExtension(imagePath),
+                File = imagePath,
+                Width = width,
+                Height = height)
         }
 
 type PageSaver(logger: ILogger<PageSaver>) =

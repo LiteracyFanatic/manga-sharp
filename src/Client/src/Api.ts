@@ -47,6 +47,8 @@ export interface ChapterGetResponse {
     Pages: {
         Id: string
         Name: string
+        Width: number
+        Height: number
     }[]
 }
 

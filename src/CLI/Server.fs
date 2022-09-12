@@ -115,6 +115,8 @@ module WebApp =
         Pages: {|
             Id: Guid
             Name: string
+            Width: int
+            Height: int
         |}[]
     }
 
@@ -177,6 +179,8 @@ module WebApp =
                             {|
                                 Id = page.Id
                                 Name = page.Name
+                                Width = page.Width
+                                Height = page.Height
                             |})
                         |> Seq.toArray
                 }

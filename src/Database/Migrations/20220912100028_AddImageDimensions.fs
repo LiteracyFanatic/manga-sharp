@@ -10,10 +10,41 @@ open Microsoft.EntityFrameworkCore.Migrations
 open Microsoft.EntityFrameworkCore.Storage.ValueConversion
 
 [<DbContext(typeof<MangaContext>)>]
-type MangaContextModelSnapshot() =
-    inherit ModelSnapshot()
+[<Migration("20220912100028_AddImageDimensions")>]
+type AddImageDimensions() =
+    inherit Migration()
 
-    override this.BuildModel(modelBuilder: ModelBuilder) =
+    override this.Up(migrationBuilder:MigrationBuilder) =
+        migrationBuilder.AddColumn<int>(
+            name = "Height"
+            ,table = "Pages"
+            ,``type`` = "INTEGER"
+            ,nullable = false
+            ,defaultValue = 0
+            ) |> ignore
+
+        migrationBuilder.AddColumn<int>(
+            name = "Width"
+            ,table = "Pages"
+            ,``type`` = "INTEGER"
+            ,nullable = false
+            ,defaultValue = 0
+            ) |> ignore
+
+
+    override this.Down(migrationBuilder:MigrationBuilder) =
+        migrationBuilder.DropColumn(
+            name = "Height"
+            ,table = "Pages"
+            ) |> ignore
+
+        migrationBuilder.DropColumn(
+            name = "Width"
+            ,table = "Pages"
+            ) |> ignore
+
+
+    override this.BuildTargetModel(modelBuilder: ModelBuilder) =
         modelBuilder.HasAnnotation("ProductVersion", "6.0.8") |> ignore
 
         modelBuilder.Entity("MangaSharp.Database.MangaDomain+Chapter", (fun b ->
