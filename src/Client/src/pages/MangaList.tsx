@@ -8,7 +8,9 @@ import {
     ListItemText,
     Menu,
     MenuItem,
-    Paper
+    Paper,
+    SxProps,
+    Theme
 } from "@mui/material";
 import React from "react";
 import { Link } from "react-router-dom";
@@ -66,11 +68,12 @@ function MangaListItem(props: MangaListItemProps) {
 
 interface MangaListProps {
     manga: MangaGetResponse[]
+    sx?: SxProps<Theme>
 }
 
 export default function MangaList(props: MangaListProps) {
     return (
-        <Paper>
+        <Paper sx={props.sx}>
             <List>
                 {props.manga.map(m => <MangaListItem key={m.Id} manga={m} />)}
             </List>
