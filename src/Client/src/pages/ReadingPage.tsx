@@ -1,31 +1,29 @@
 import { Box, CircularProgress, Container, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useKey } from "react-use";
 
 import { ChapterGetResponse, setBookmark, useChapter } from "../Api";
 import ReadingPageAppBar from "../components/ReadingPageAppBar";
 import ReadingPageStepper from "../components/ReadingPageStepper";
+import { useSearchParam } from "../hooks/useSearchParam";
 import LazyImage from "./LazyImage";
 
 export default function ReadingPage() {
     const { chapterId } = useParams();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const pageName = searchParams.get("page") || "";
+    const [pageName, setPageName] = useSearchParam("page");
+    const [innerHeight, setInnerHeight] = useState(window.innerHeight);
+    const navigate = useNavigate();
+
     const chapter = useChapter(chapterId || "");
     const currentPageIndex = chapter.data ? chapter.data.Pages.findIndex(page => page.Name === pageName) : -1;
-    const navigate = useNavigate();
-    const [innerHeight, setInnerHeight] = useState(window.innerHeight);
 
     const progressBarHeight = 4;
 
     useEffect(() => {
         if (chapter.data?.Direction === "Horizontal") {
             if (!pageName) {
-                setSearchParams({
-                    ...Object.fromEntries(searchParams.entries()),
-                    page: "001"
-                });
+                setPageName("001");
             }
             if (currentPageIndex >= 0) {
                 setBookmark(chapter.data.MangaId, {
@@ -34,7 +32,7 @@ export default function ReadingPage() {
                 });
             }
         }
-    }, [chapter.data, pageName, setSearchParams, currentPageIndex]);
+    }, [chapter.data, pageName, setPageName, currentPageIndex]);
 
     useEffect(() => {
         if (chapter.data?.Direction === "Vertical") {
@@ -47,10 +45,7 @@ export default function ReadingPage() {
 
     function onClickPrevious(chapter: ChapterGetResponse) {
         if (chapter.Direction === "Horizontal" && currentPageIndex > 0) {
-            setSearchParams({
-                ...Object.fromEntries(searchParams.entries()),
-                page: chapter.Pages[currentPageIndex - 1].Name
-            });
+            setPageName(chapter.Pages[currentPageIndex - 1].Name);
         } else if (chapter.PreviousChapterUrl) {
             navigate(chapter.PreviousChapterUrl);
         }
@@ -58,10 +53,7 @@ export default function ReadingPage() {
 
     function onClickNext(chapter: ChapterGetResponse) {
         if (chapter.Direction === "Horizontal" && currentPageIndex >= 0 && currentPageIndex < chapter.Pages.length - 1) {
-            setSearchParams({
-                ...Object.fromEntries(searchParams.entries()),
-                page: chapter.Pages[currentPageIndex + 1].Name
-            });
+            setPageName(chapter.Pages[currentPageIndex + 1].Name);
         } else if (chapter.NextChapterUrl) {
             navigate(chapter.NextChapterUrl);
         }
@@ -80,10 +72,7 @@ export default function ReadingPage() {
 
     function onChangeStep(page: number) {
         if (chapter.data) {
-            setSearchParams({
-                ...Object.fromEntries(searchParams.entries()),
-                page: chapter.data.Pages[page].Name
-            });
+            setPageName(chapter.data.Pages[page].Name);
         }
     }
 
@@ -109,10 +98,7 @@ export default function ReadingPage() {
         if (chapter.data) {
             const selectedPage = chapter.data.Pages.find(page => page.Id === e.target.value);
             if (selectedPage) {
-                setSearchParams({
-                    ...Object.fromEntries(searchParams.entries()),
-                    page: selectedPage.Name
-                });
+                setPageName(selectedPage.Name);
             }
         }
     }
