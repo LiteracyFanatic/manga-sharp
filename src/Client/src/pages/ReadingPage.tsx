@@ -5,6 +5,7 @@ import { useKey } from "react-use";
 
 import { ChapterGetResponse, setBookmark, useChapter } from "../Api";
 import ReadingPageAppBar from "../components/ReadingPageAppBar";
+import ReadingPageOverlay from "../components/ReadingPageOverlay";
 import ReadingPageStepper from "../components/ReadingPageStepper";
 import { useSearchParam } from "../hooks/useSearchParam";
 import LazyImage from "./LazyImage";
@@ -56,17 +57,6 @@ export default function ReadingPage() {
             setPageName(chapter.Pages[currentPageIndex + 1].Name);
         } else if (chapter.NextChapterUrl) {
             navigate(chapter.NextChapterUrl);
-        }
-    }
-
-    function onClick(chapter: ChapterGetResponse, e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-        if (chapter.Direction === "Horizontal") {
-            if (e.clientX < document.body.clientWidth / 3) {
-                onClickPrevious(chapter);
-            } else if (e.clientX > document.body.clientWidth * 2 / 3) {
-                onClickNext(chapter);
-            }
-            e.preventDefault();
         }
     }
 
@@ -154,7 +144,6 @@ export default function ReadingPage() {
                             }}
                         >
                             <Box
-                                onClick={e => onClick(chapterData, e)}
                                 sx={{
                                     width: "100%",
                                     display: "flex",
@@ -162,6 +151,27 @@ export default function ReadingPage() {
                                     alignItems: "center"
                                 }}
                             >
+                                <Box
+                                    sx={{
+                                        position: "fixed",
+                                        top: theme => theme.mixins.toolbar.minHeight,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: chapterData.Direction === "Horizontal" ? progressBarHeight : 0,
+                                        zIndex: 2
+                                    }}
+                                >
+                                    <ReadingPageOverlay
+                                        onClickPrevious={() => onClickPrevious(chapterData)}
+                                        onClickNext={() => onClickNext(chapterData)}
+                                        previousDisabled={!chapterData.PreviousChapterUrl && currentPageIndex <= 0}
+                                        nextDisabled={!chapterData.NextChapterUrl && (currentPageIndex === -1 || currentPageIndex === chapterData.Pages.length - 1)}
+                                        sx={{
+                                            width: "100%",
+                                            height: "100%"
+                                        }}
+                                    />
+                                </Box>
                                 {chapterData.Pages.map((page, i) => (
                                     <LazyImage
                                         key={page.Id}
