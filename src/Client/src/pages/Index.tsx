@@ -1,5 +1,6 @@
 import { CircularProgress, Typography } from "@mui/material";
 import { Container } from "@mui/system";
+import fuzzysort from "fuzzysort";
 
 import { useManga } from "../Api";
 import IndexAppBar from "../components/IndexAppBar";
@@ -12,9 +13,14 @@ export default function Index() {
 
     function getContent() {
         if (manga.data) {
+            const filteredManga = fuzzysort.go(search || "", manga.data, {
+                all: true,
+                keys: ["Title"],
+                threshold: -10000
+            });
             return (
                 <MangaList
-                    manga={manga.data.filter(manga => search ? manga.Title.toLowerCase().includes(search.toLowerCase()) : true)}
+                    manga={filteredManga}
                     sx={{
                         width: "100%"
                     }}

@@ -12,19 +12,35 @@ import {
     SxProps,
     Theme
 } from "@mui/material";
+import fuzzysort from "fuzzysort";
 import React from "react";
 import { Link } from "react-router-dom";
 
 import { MangaGetResponse } from "../Api";
 
 interface MangaListItemProps {
-    manga: MangaGetResponse
+    manga: Fuzzysort.KeysResult<MangaGetResponse>
 }
 
 function MangaListItem(props: MangaListItemProps) {
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
-    const secondaryText = `(${props.manga.ChapterIndex + 1}/${props.manga.NumberOfChapters}) ${props.manga.Direction}`;
+    const highlightedTitle = fuzzysort.highlight(props.manga[0], (m, i) => (
+        <Box
+            key={i}
+            component="span"
+            sx={theme => ({
+                fontWeight: theme.typography.fontWeightBold,
+                backgroundColor: theme.palette.primary.main,
+                color: theme => theme.palette.primary.contrastText
+            })}
+        >
+            {m}
+        </Box>
+    ));
+    const title = highlightedTitle?.length ? highlightedTitle : props.manga.obj.Title;
+
+    const secondaryText = `(${props.manga.obj.ChapterIndex + 1}/${props.manga.obj.NumberOfChapters}) ${props.manga.obj.Direction}`;
 
     return (
         <Box>
@@ -40,11 +56,11 @@ function MangaListItem(props: MangaListItemProps) {
             >
                 <ListItemButton
                     component={Link}
-                    to={props.manga.BookmarkUrl}
+                    to={props.manga.obj.BookmarkUrl}
                     divider={true}
                 >
                     <ListItemText
-                        primary={props.manga.Title}
+                        primary={title}
                         secondary={secondaryText}
                     />
                 </ListItemButton>
@@ -57,7 +73,7 @@ function MangaListItem(props: MangaListItemProps) {
                 <MenuItem
                     component="a"
                     LinkComponent="a"
-                    href={props.manga.SourceUrl}
+                    href={props.manga.obj.SourceUrl}
                 >
                     View Source
                 </MenuItem>
@@ -67,7 +83,7 @@ function MangaListItem(props: MangaListItemProps) {
 }
 
 interface MangaListProps {
-    manga: MangaGetResponse[]
+    manga: Fuzzysort.KeysResults<MangaGetResponse>
     sx?: SxProps<Theme>
 }
 
@@ -75,9 +91,8 @@ export default function MangaList(props: MangaListProps) {
     return (
         <Paper sx={props.sx}>
             <List>
-                {props.manga.map(m => <MangaListItem key={m.Id} manga={m} />)}
+                {props.manga.map(m => <MangaListItem key={m.obj.Id} manga={m} />)}
             </List>
         </Paper>
     );
 }
-
