@@ -22,19 +22,20 @@ type WebToonExtractor(
     let hc = httpFactory.CreateClient()
     do hc.DefaultRequestHeaders.Referrer <- Uri("https://www.webtoons.com/")
 
+    let rec getLastPageGroup urlArg htmlArg =
+        taskResult {
+            match querySelector htmlArg "a.pg_next" with
+            | Ok el ->
+                let nextPageGroupHref =
+                    HtmlNode.attributeValue "href" el
+                    |> resolveUrl urlArg
+                let! html = HtmlDocument.tryLoadAsync hc nextPageGroupHref
+                return! getLastPageGroup nextPageGroupHref html
+            | Error _ -> return (urlArg, htmlArg)
+        }
+
     let getChapterUrls url html =
         taskResult {
-            let rec getLastPageGroup urlArg htmlArg =
-                taskResult {
-                    match querySelector htmlArg "a.pg_next" with
-                    | Ok el ->
-                        let nextPageGroupHref =
-                            HtmlNode.attributeValue "href" el
-                            |> resolveUrl urlArg
-                        let! html = HtmlDocument.tryLoadAsync hc nextPageGroupHref
-                        return! getLastPageGroup nextPageGroupHref html
-                    | Error _ -> return (urlArg, htmlArg)
-                }
             let! url, html = getLastPageGroup url html
             let! paginateLinks = querySelectorAll html ".paginate a"
             let lastPageHref =
