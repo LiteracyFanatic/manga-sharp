@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <AssemblyName>manga</AssemblyName>
@@ -28,16 +28,16 @@
     <PackageReference Include="EntityFrameworkCore.FSharp" Version="6.0.7" />
     <PackageReference Include="Flurl" Version="3.0.6" />
     <PackageReference Include="Fsharp.data" Version="5.0.2" />
-    <PackageReference Include="FSharp.SystemTextJson" Version="0.19.13" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.13.0" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="1.0.6" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.0.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.0.0" />
     <PackageReference Include="Giraffe" Version="6.0.0" />
     <PackageReference Include="Giraffe.ViewEngine" Version="2.0.0-alpha-1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="7.0.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="6.0.1" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.8" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="7.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Database\Database.fsproj" />
