@@ -26,6 +26,7 @@ type MangaDexMangaResponse = {
                 en: string option
                 ja: string option
             |}[]
+            chapterNumbersResetOnNewVolume: bool
         |}
     |}
 }
@@ -37,6 +38,7 @@ type MangaDexChapterResponse = {
         attributes: {|
             translatedLanguage: string
             publishAt: DateTime
+            volume: string option
             chapter: string option
             title: string option
         |}

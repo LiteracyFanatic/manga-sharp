@@ -26,7 +26,7 @@ type MangaDexExtractor(
     let getIdFromUrl (url: string) =
         regexMatch (Regex("https://mangadex\.org/title/([^/]*)(/.*)?")) url
 
-    let getChaptersAsync (mangaId: string) (manga: Manga) =
+    let getChaptersAsync (mangaId: string) (manga: Manga) (chapterNumbersResetOnNewVolume: bool) =
         taskResult {
             let! res = mangaDexApi.GetChaptersAsync(mangaId)
             let chapters =
@@ -37,7 +37,12 @@ type MangaDexExtractor(
                         |> Option.defaultWith (fun () -> c.attributes.title.Value)
                     Chapter(
                         Url = $"https://mangadex.org/chapter/%s{c.id}",
-                        Title = Some chapterName,
+                        Title =
+                            if chapterNumbersResetOnNewVolume then
+                                Some $"%s{c.attributes.volume.Value}.%s{chapterName}"
+                            else
+                                Some chapterName
+                            ,
                         DownloadStatus = NotDownloaded))
                 |> Seq.toList
             let mergedChapters =
@@ -142,7 +147,7 @@ type MangaDexExtractor(
                         res.data.attributes.altTitles
                         |> Seq.pick (fun altTitle -> altTitle.ja))
                 let! manga = mangaRepository.GetOrCreateAsync(title, direction, url)
-                let! chapters = getChaptersAsync mangaId manga
+                let! chapters = getChaptersAsync mangaId manga res.data.attributes.chapterNumbersResetOnNewVolume
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
 
@@ -155,7 +160,8 @@ type MangaDexExtractor(
             taskResult {
                 let! manga = mangaRepository.GetByIdAsync(mangaId)
                 let! mangaId = getIdFromUrl manga.Url
-                let! chapters = getChaptersAsync mangaId manga
+                let! res = mangaDexApi.GetMangaAsync(mangaId)
+                let! chapters = getChaptersAsync mangaId manga res.data.attributes.chapterNumbersResetOnNewVolume
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
 
