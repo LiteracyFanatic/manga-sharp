@@ -38,13 +38,11 @@ module Extensions =
                 JsonSerializerOptions(
                     WriteIndented = true,
                     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping)
-            let jsonConverter =
-                JsonFSharpConverter(
-                    unionEncoding = (
-                        JsonUnionEncoding.Default
-                        ||| JsonUnionEncoding.NamedFields
-                        ||| JsonUnionEncoding.UnwrapFieldlessTags
-                        ||| JsonUnionEncoding.UnwrapRecordCases))
-            serializationOptions.Converters.Add(jsonConverter)
+            JsonFSharpOptions
+                .Default()
+                .WithUnionNamedFields()
+                .WithUnionUnwrapFieldlessTags()
+                .WithUnionUnwrapRecordCases()
+                .AddToJsonSerializerOptions(serializationOptions)
 
             this.AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializationOptions))
