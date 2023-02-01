@@ -4,6 +4,7 @@ open System
 open System.Globalization
 open FSharp.Data
 open System.Net.Http
+open System.Net.Http.Headers
 open System.Text.RegularExpressions
 open System.Linq
 open Microsoft.Extensions.Logging
@@ -20,6 +21,8 @@ type Manwha18Extractor(
     logger: ILogger<Manwha18Extractor>) =
 
     let hc = httpFactory.CreateClient()
+    let userAgent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1"
+    do hc.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent)
 
     let getChaptersAsync (html: HtmlDocument) (manga: Manga) =
         taskResult {
