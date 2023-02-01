@@ -15,7 +15,6 @@ open MangaSharp.CLI.Arguments
 open MangaSharp.CLI.Util
 open Giraffe
 open FsToolkit.ErrorHandling
-open System.Collections
 
 type LsJson = {
     Title: string
