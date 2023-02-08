@@ -19,7 +19,7 @@ type ManganatoExtractor(
     logger: ILogger<ManganatoExtractor>) =
 
     let hc = httpFactory.CreateClient()
-    do hc.DefaultRequestHeaders.Referrer <- Uri("https://readmanganato.com/")
+    do hc.DefaultRequestHeaders.Referrer <- Uri("https://chapmanganato.com/")
 
     let getChaptersAsync (url: string) (html: HtmlDocument) (manga: Manga) =
         taskResult {
