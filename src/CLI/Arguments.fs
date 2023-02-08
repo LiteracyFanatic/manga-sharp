@@ -14,12 +14,14 @@ type DownloadArgs =
 
 type UpdateArgs =
     | [<MainCommand; Unique>] Title of string
-    | All
+    | From of string
+    | To of string
     interface IArgParserTemplate with
         member this.Usage =
             match this with
             | Title _ -> "the manga to update."
-            | All -> "update all manga."
+            | From _ -> "the chapter to start updating from."
+            | To _ -> "the chapter to update to."
 
 type ReadArgs =
     | Title of string

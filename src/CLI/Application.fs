@@ -257,13 +257,31 @@ type Application(
                 .ToList()
                 |> List.ofSeq
         let manga =
-            match args.Contains(UpdateArgs.All), args.TryGetResult(UpdateArgs.Title) with
-            | true, None -> allManga
-            | true, _ ->
-                args.Raise("Cannot specify --all and a manga title at the same time")
-            | false, None ->
-                args.Raise("Either --all or a manga title must be specified")
-            | false, Some title ->
+            match args.TryGetResult(UpdateArgs.Title), args.TryGetResult(UpdateArgs.From), args.TryGetResult(UpdateArgs.To) with
+            | None, None, None -> allManga
+            | None, startTitle, endTitle ->
+                let startIndex =
+                    startTitle
+                    |> Option.map (fun startTitle ->
+                        allManga
+                        |> List.tryFindIndex (fun m -> m.Title = startTitle)
+                        |> Option.defaultWith (fun () ->
+                            logger.LogError("Manga {Title} could not be found", startTitle)
+                            exit 1))
+                        |> Option.defaultValue 0
+                let endIndex =
+                    endTitle
+                    |> Option.map (fun endTitle ->
+                        allManga
+                        |> List.tryFindIndex (fun m -> m.Title = endTitle)
+                        |> Option.defaultWith (fun () ->
+                            logger.LogError("Manga {Title} could not be found", endTitle)
+                            exit 1))
+                        |> Option.defaultValue (allManga.Length - 1)
+                allManga[startIndex..endIndex]
+            | Some title, startTitle, endTitle ->
+                if startTitle.IsSome || endTitle.IsSome then
+                    args.Raise("Cannot specify --title and --from/--to at the same")
                 match allManga |> List.tryFind (fun m -> m.Title = title) with
                 | Some m -> [m]
                 | None ->
