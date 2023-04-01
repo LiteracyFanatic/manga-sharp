@@ -30,61 +30,76 @@ module rec MangaDomain =
         member val Url: string = Unchecked.defaultof<_> with get, set
         member val Created: DateTime = Unchecked.defaultof<_> with get, set
         member val Accessed: DateTime option = Unchecked.defaultof<_> with get, set
-        [<DefaultValue>] val mutable private _BookmarkChapterId: Nullable<Guid>
-        member this.BookmarkChapterId with get() = Option.ofNullable this._BookmarkChapterId and set v = this._BookmarkChapterId <- Option.toNullable v
-        [<DefaultValue>] val mutable private _BookmarkChapter: Chapter
-        member this.BookmarkChapter with get() = Option.ofObj this._BookmarkChapter and set v = this._BookmarkChapter <- Option.toObj v
-        [<DefaultValue>] val mutable private _BookmarkPageId: Nullable<Guid>
-        member this.BookmarkPageId with get() = Option.ofNullable this._BookmarkPageId and set v = this._BookmarkPageId <- Option.toNullable v
-        [<DefaultValue>] val mutable private _BookmarkPage: Page
-        member this.BookmarkPage with get() = Option.ofObj this._BookmarkPage and set v = this._BookmarkPage <- Option.toObj v
+
+        [<DefaultValue>]
+        val mutable private _BookmarkChapterId: Nullable<Guid>
+
+        member this.BookmarkChapterId
+            with get () = Option.ofNullable this._BookmarkChapterId
+            and set v = this._BookmarkChapterId <- Option.toNullable v
+
+        [<DefaultValue>]
+        val mutable private _BookmarkChapter: Chapter
+
+        member this.BookmarkChapter
+            with get () = Option.ofObj this._BookmarkChapter
+            and set v = this._BookmarkChapter <- Option.toObj v
+
+        [<DefaultValue>]
+        val mutable private _BookmarkPageId: Nullable<Guid>
+
+        member this.BookmarkPageId
+            with get () = Option.ofNullable this._BookmarkPageId
+            and set v = this._BookmarkPageId <- Option.toNullable v
+
+        [<DefaultValue>]
+        val mutable private _BookmarkPage: Page
+
+        member this.BookmarkPage
+            with get () = Option.ofObj this._BookmarkPage
+            and set v = this._BookmarkPage <- Option.toObj v
 
         interface IEntityTypeConfiguration<Manga> with
             member this.Configure(builder) =
-                builder.Property(fun e -> e.Title)
-                    .HasMaxLength(1000)
-                    |> ignore
+                builder.Property(fun e -> e.Title).HasMaxLength(1000) |> ignore
 
-                builder.HasIndex(fun e -> e.Title :> obj)
-                    .IsUnique()
-                    |> ignore
+                builder.HasIndex(fun e -> e.Title :> obj).IsUnique() |> ignore
 
-                builder.Ignore(fun e -> e.BookmarkChapterId :> obj)
+                builder
+                    .Ignore(fun e -> e.BookmarkChapterId :> obj)
                     .Property(fun e -> e._BookmarkChapterId)
                     .HasColumnName("BookmarkChapterId")
-                    |> ignore
+                |> ignore
 
-                builder.Ignore(fun e -> e.BookmarkChapter :> obj)
+                builder
+                    .Ignore(fun e -> e.BookmarkChapter :> obj)
                     .HasOne(fun e -> e._BookmarkChapter)
                     .WithOne()
                     .HasForeignKey(fun (e: Manga) -> e._BookmarkChapterId :> obj)
-                    |> ignore
+                |> ignore
 
-                builder.Ignore(fun e -> e.BookmarkPageId :> obj)
+                builder
+                    .Ignore(fun e -> e.BookmarkPageId :> obj)
                     .Property(fun e -> e._BookmarkPageId)
                     .HasColumnName("BookmarkPageId")
-                    |> ignore
+                |> ignore
 
-                builder.Ignore(fun e -> e.BookmarkPage :> obj)
+                builder
+                    .Ignore(fun e -> e.BookmarkPage :> obj)
                     .HasOne(fun e -> e._BookmarkPage)
                     .WithOne()
                     .HasForeignKey(fun (e: Manga) -> e._BookmarkPageId :> obj)
-                    |> ignore
+                |> ignore
 
-                builder.Property(fun e -> e.Direction)
-                    .HasConversion(
-                        (fun v -> v.ToString()),
-                        (fun v -> makeUnion (typeof<Direction>) v :?> Direction))
+                builder
+                    .Property(fun e -> e.Direction)
+                    .HasConversion((fun v -> v.ToString()), (fun v -> makeUnion (typeof<Direction>) v :?> Direction))
                     .HasMaxLength(10)
-                    |> ignore
+                |> ignore
 
-                builder.Property(fun e -> e.Url)
-                    .HasMaxLength(200)
-                    |> ignore
+                builder.Property(fun e -> e.Url).HasMaxLength(200) |> ignore
 
-                builder.Property(fun e -> e.Created)
-                    .HasDefaultValueSql("datetime()")
-                    |> ignore
+                builder.Property(fun e -> e.Created).HasDefaultValueSql("datetime()") |> ignore
 
     [<AllowNullLiteral>]
     type Chapter() =
@@ -100,24 +115,20 @@ module rec MangaDomain =
 
         interface IEntityTypeConfiguration<Chapter> with
             member this.Configure(builder) =
-                builder.Property(fun e -> e.Url)
-                    .HasMaxLength(200)
-                    |> ignore
+                builder.Property(fun e -> e.Url).HasMaxLength(200) |> ignore
 
-                builder.Property(fun e -> e.Title)
-                    .HasMaxLength(200)
-                    |> ignore
+                builder.Property(fun e -> e.Title).HasMaxLength(200) |> ignore
 
-                builder.Property(fun e -> e.DownloadStatus)
+                builder
+                    .Property(fun e -> e.DownloadStatus)
                     .HasConversion(
                         (fun v -> v.ToString()),
-                        (fun v -> makeUnion (typeof<DownloadStatus>) v :?> DownloadStatus))
+                        (fun v -> makeUnion (typeof<DownloadStatus>) v :?> DownloadStatus)
+                    )
                     .HasMaxLength(10)
-                    |> ignore
+                |> ignore
 
-                builder.Property(fun e -> e.Created)
-                    .HasDefaultValueSql("datetime()")
-                    |> ignore
+                builder.Property(fun e -> e.Created).HasDefaultValueSql("datetime()") |> ignore
 
     [<AllowNullLiteral>]
     type Page() =
@@ -131,13 +142,9 @@ module rec MangaDomain =
 
         interface IEntityTypeConfiguration<Page> with
             member this.Configure(builder) =
-                builder.Property(fun e -> e.Name)
-                    .HasMaxLength(10)
-                    |> ignore
+                builder.Property(fun e -> e.Name).HasMaxLength(10) |> ignore
 
-                builder.Property(fun e -> e.File)
-                    .HasMaxLength(2000)
-                    |> ignore
+                builder.Property(fun e -> e.File).HasMaxLength(2000) |> ignore
 
 open MangaDomain
 
@@ -145,14 +152,28 @@ type MangaContext =
     inherit DbContext
 
     new() = { inherit DbContext() }
-    new(options : DbContextOptions<MangaContext>) = { inherit DbContext(options) }
+    new(options: DbContextOptions<MangaContext>) = { inherit DbContext(options) }
 
-    [<DefaultValue>] val mutable private _Manga : DbSet<Manga>
-    [<DefaultValue>] val mutable private _Chapters : DbSet<Chapter>
-    [<DefaultValue>] val mutable private _Pages : DbSet<Page>
-    member this.Manga with get() = this._Manga and set v = this._Manga <- v
-    member this.Chapters with get() = this._Chapters and set v = this._Chapters <- v
-    member this.Pages with get() = this._Pages and set v = this._Pages <- v
+    [<DefaultValue>]
+    val mutable private _Manga: DbSet<Manga>
+
+    [<DefaultValue>]
+    val mutable private _Chapters: DbSet<Chapter>
+
+    [<DefaultValue>]
+    val mutable private _Pages: DbSet<Page>
+
+    member this.Manga
+        with get () = this._Manga
+        and set v = this._Manga <- v
+
+    member this.Chapters
+        with get () = this._Chapters
+        and set v = this._Chapters <- v
+
+    member this.Pages
+        with get () = this._Pages
+        and set v = this._Pages <- v
 
     override this.OnModelCreating(modelBuilder: ModelBuilder) =
         base.OnModelCreating(modelBuilder)
@@ -162,13 +183,14 @@ type MangaContext =
         for entity in modelBuilder.Model.GetEntityTypes() do
             for property in entity.ClrType.GetProperties() do
                 if property.GetType() = typeof<string> then
-                    modelBuilder.Entity(property.DeclaringType)
+                    modelBuilder
+                        .Entity(property.DeclaringType)
                         .Property(property.PropertyType, property.Name)
                         .IsRequired()
-                        |> ignore
+                    |> ignore
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof<MangaContext>.Assembly)
-            |> ignore
+        |> ignore
 
 type MangaContextFactory() =
     interface IDesignTimeDbContextFactory<MangaContext> with

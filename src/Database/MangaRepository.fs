@@ -24,15 +24,11 @@ type MangaRepository(db: MangaContext) =
                     .ThenInclude(fun (chapter: Chapter) -> chapter.Pages)
                     .AsSplitQuery()
                     .TryFirstAsync(fun m -> m.Title = title)
+
             let manga =
                 existingManga
                 |> Option.defaultWith (fun () ->
-                    db.Manga
-                        .Add(
-                            Manga(
-                                Title = title,
-                                Direction = direction,
-                                Url = url))
-                        .Entity)
+                    db.Manga.Add(Manga(Title = title, Direction = direction, Url = url)).Entity)
+
             return manga
         }

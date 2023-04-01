@@ -5,8 +5,7 @@ open System.Text.RegularExpressions
 open System.Globalization
 open MangaSharp.Database.MangaDomain
 
-let private normalize (form: NormalizationForm) (input: string) =
-    input.Normalize(form)
+let private normalize (form: NormalizationForm) (input: string) = input.Normalize(form)
 
 // Converts characters such as "ā" to "a". This is not a correct romanization of
 // Japanese text (e.g. "obā-san" becomes "oba-san" when it should really be
@@ -35,6 +34,7 @@ let getFirstPage (manga: Manga) =
         manga.Chapters
         |> Seq.sortBy (fun c -> c.Index)
         |> Seq.find (fun c -> c.DownloadStatus = Downloaded)
+
     $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
 
 let tryPreviousChapter (manga: Manga) (chapter: Chapter) =
@@ -42,6 +42,7 @@ let tryPreviousChapter (manga: Manga) (chapter: Chapter) =
         manga.Chapters
         |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
         |> Seq.sortBy (fun c -> c.Index)
+
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
     Seq.tryItem (i - 1) chapters
 
@@ -50,6 +51,7 @@ let tryNextChapter (manga: Manga) (chapter: Chapter) =
         manga.Chapters
         |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
         |> Seq.sortBy (fun c -> c.Index)
+
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
     Seq.tryItem (i + 1) chapters
 
@@ -57,12 +59,12 @@ let getBookmarkUrl (manga: Manga) =
     match manga.BookmarkChapter, manga.BookmarkPage with
     | Some chapter, Some page ->
         $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}?page=%s{page.Name}"
-    | Some chapter, None ->
-        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
+    | Some chapter, None -> $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
     | None, None
     | None, Some _ ->
         let chapter =
             manga.Chapters
             |> Seq.sortBy (fun c -> c.Index)
             |> Seq.find (fun c -> c.DownloadStatus = Downloaded)
+
         $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"

@@ -6,6 +6,7 @@ open Argu
 type DownloadArgs =
     | [<Mandatory; MainCommand>] Url of string
     | Direction of Direction
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -16,6 +17,7 @@ type UpdateArgs =
     | [<MainCommand; Unique>] Title of string
     | From of string
     | To of string
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -28,6 +30,7 @@ type ReadArgs =
     | Last
     | Port of int
     | No_Open
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -38,6 +41,7 @@ type ReadArgs =
 
 type LsArgs =
     | Json
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -46,6 +50,7 @@ type LsArgs =
 type RmArgs =
     | [<MainCommand; Unique>] Title of string
     | All
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -57,6 +62,7 @@ type ArchiveArgs =
     | All
     | From_Chapter of string
     | To_Chapter of string
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -70,6 +76,7 @@ type UnarchiveArgs =
     | All
     | From_Chapter of string
     | To_Chapter of string
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -87,6 +94,7 @@ type Args =
     | [<CliPrefix(CliPrefix.None)>] Archive of ParseResults<ArchiveArgs>
     | [<CliPrefix(CliPrefix.None)>] Unarchive of ParseResults<UnarchiveArgs>
     | [<SubCommand>] Version
+
     interface IArgParserTemplate with
         member this.Usage =
             match this with

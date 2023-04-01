@@ -13,13 +13,15 @@ open MangaSharp.Extractors.MangaDex
 open MangaSharp.Extractors.Util
 open FsToolkit.ErrorHandling
 
-type MangaDexExtractor(
-    httpFactory: IHttpClientFactory,
-    db: MangaContext,
-    mangaRepository: MangaRepository,
-    pageSaver: PageSaver,
-    mangaDexApi: MangaDexApi,
-    logger: ILogger<MangaDexExtractor>) =
+type MangaDexExtractor
+    (
+        httpFactory: IHttpClientFactory,
+        db: MangaContext,
+        mangaRepository: MangaRepository,
+        pageSaver: PageSaver,
+        mangaDexApi: MangaDexApi,
+        logger: ILogger<MangaDexExtractor>
+    ) =
 
     let hc = httpFactory.CreateClient()
 
@@ -29,31 +31,38 @@ type MangaDexExtractor(
     let getChaptersAsync (mangaId: string) (manga: Manga) (chapterNumbersResetOnNewVolume: bool) =
         taskResult {
             let! res = mangaDexApi.GetChaptersAsync(mangaId)
+
             let chapters =
                 res
                 |> Seq.map (fun c ->
                     let chapterName =
-                        c.attributes.chapter
-                        |> Option.defaultWith (fun () -> c.attributes.title.Value)
+                        c.attributes.chapter |> Option.defaultWith (fun () -> c.attributes.title.Value)
+
+                    let title =
+                        if chapterNumbersResetOnNewVolume then
+                            Some $"%s{c.attributes.volume.Value}.%s{chapterName}"
+                        else
+                            Some chapterName
+
                     Chapter(
                         Url = $"https://mangadex.org/chapter/%s{c.id}",
-                        Title =
-                            if chapterNumbersResetOnNewVolume then
-                                Some $"%s{c.attributes.volume.Value}.%s{chapterName}"
-                            else
-                                Some chapterName
-                            ,
-                        DownloadStatus = NotDownloaded))
+                        Title = title,
+                        DownloadStatus = NotDownloaded
+                    ))
                 |> Seq.toList
+
             let mergedChapters =
-                chapters.Select(fun chapter i ->
-                    let chapter =
-                        match manga.Chapters |> Seq.tryFind (fun c -> c.Url = chapter.Url) with
-                        | Some c -> c
-                        | None -> chapter
-                    chapter.Index <- i
-                    chapter)
+                chapters
+                    .Select(fun chapter i ->
+                        let chapter =
+                            match manga.Chapters |> Seq.tryFind (fun c -> c.Url = chapter.Url) with
+                            | Some c -> c
+                            | None -> chapter
+
+                        chapter.Index <- i
+                        chapter)
                     .ToList()
+
             return mergedChapters
         }
 
@@ -61,18 +70,21 @@ type MangaDexExtractor(
         taskResult {
             let sw = Stopwatch()
             sw.Start()
+
             try
                 use! res = hc.GetAsync(img)
                 res.EnsureSuccessStatusCode() |> ignore
                 use! imageStream = res.Content.ReadAsStreamAsync()
                 sw.Stop()
                 let! page = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
+
                 let cached =
                     if res.Headers.Contains("X-Cache") then
                         res.Headers.GetValues("X-Cache")
                         |> Seq.exists (fun header -> header.StartsWith("HIT"))
                     else
                         false
+
                 let request = {
                     url = img
                     success = true
@@ -80,11 +92,12 @@ type MangaDexExtractor(
                     bytes = imageStream.Length
                     duration = sw.ElapsedMilliseconds
                 }
+
                 do! mangaDexApi.PostHealthReportAsync(request)
                 return page
-            with
-            | _ ->
+            with _ ->
                 sw.Stop()
+
                 let request = {
                     url = img
                     success = false
@@ -92,6 +105,7 @@ type MangaDexExtractor(
                     bytes = 0
                     duration = sw.ElapsedMilliseconds
                 }
+
                 do! mangaDexApi.PostHealthReportAsync(request)
                 return! Error ""
         }
@@ -99,9 +113,11 @@ type MangaDexExtractor(
     let downloadChapter (newChapter: Chapter) (chapterTitle: string) (chapterId: string) (mangaTitle: string) =
         taskResult {
             let! res = mangaDexApi.GetAtHomeAsync(chapterId)
+
             let imgs =
                 res.chapter.data
                 |> Seq.map (fun p -> Path.Combine(res.baseUrl, "data", res.chapter.hash, p))
+
             for i, img in Seq.indexed imgs do
                 let! newPage = downloadPage mangaTitle chapterTitle i img
                 newChapter.Pages.Add(newPage)
@@ -113,15 +129,19 @@ type MangaDexExtractor(
                 manga.Chapters
                 |> Seq.filter (fun c -> c.DownloadStatus = NotDownloaded)
                 |> Seq.toList
+
             for i, newChapter in Seq.indexed newChapters do
                 let! chapterId = regexMatch (Regex("https://mangadex.org/chapter/(.*)")) newChapter.Url
                 let chapterTitle = newChapter.Title.Value
+
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
                     manga.Title,
                     chapterTitle,
                     (i + 1),
-                    newChapters.Length)
+                    newChapters.Length
+                )
+
                 do! downloadChapter newChapter chapterTitle chapterId manga.Title
                 newChapter.DownloadStatus <- Downloaded
                 let! _ = db.SaveChangesAsync()
@@ -137,15 +157,15 @@ type MangaDexExtractor(
             taskResult {
                 let! mangaId = getIdFromUrl url
                 let! res = mangaDexApi.GetMangaAsync(mangaId)
+
                 let title =
                     res.data.attributes.title.en
                     |> Option.orElseWith (fun () ->
-                        res.data.attributes.altTitles
-                        |> Seq.tryPick (fun altTitle -> altTitle.en))
+                        res.data.attributes.altTitles |> Seq.tryPick (fun altTitle -> altTitle.en))
                     |> Option.orElse res.data.attributes.title.ja
                     |> Option.defaultWith (fun () ->
-                        res.data.attributes.altTitles
-                        |> Seq.pick (fun altTitle -> altTitle.ja))
+                        res.data.attributes.altTitles |> Seq.pick (fun altTitle -> altTitle.ja))
+
                 let! manga = mangaRepository.GetOrCreateAsync(title, direction, url)
                 let! chapters = getChaptersAsync mangaId manga res.data.attributes.chapterNumbersResetOnNewVolume
                 manga.Chapters <- chapters

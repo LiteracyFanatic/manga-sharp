@@ -12,12 +12,14 @@ open MangaSharp.Database.MangaDomain
 open MangaSharp.Extractors.Util
 open FsToolkit.ErrorHandling
 
-type ManyToonExtractor(
-    httpFactory: IHttpClientFactory,
-    db: MangaContext,
-    mangaRepository: MangaRepository,
-    pageSaver: PageSaver,
-    logger: ILogger<ManyToonExtractor>) =
+type ManyToonExtractor
+    (
+        httpFactory: IHttpClientFactory,
+        db: MangaContext,
+        mangaRepository: MangaRepository,
+        pageSaver: PageSaver,
+        logger: ILogger<ManyToonExtractor>
+    ) =
 
     let hc = httpFactory.CreateClient()
 
@@ -30,42 +32,50 @@ type ManyToonExtractor(
             let htmlContent = $"<html><head></head><body>%s{htmlContent}</body></html>"
             let! htmlDoc = HtmlDocument.tryParse htmlContent
             let! chapters = querySelectorAll htmlDoc ".wp-manga-chapter a"
+
             let chapterUrls =
-                chapters
-                |> Seq.rev
-                |> Seq.map (HtmlNode.attributeValue "href")
-                |> Seq.distinct
+                chapters |> Seq.rev |> Seq.map (HtmlNode.attributeValue "href") |> Seq.distinct
 
             let chapters =
                 chapterUrls
-                |> Seq.map (fun url ->
-                    Chapter(
-                        Url = url,
-                        Title = None,
-                        DownloadStatus = NotDownloaded))
+                |> Seq.map (fun url -> Chapter(Url = url, Title = None, DownloadStatus = NotDownloaded))
                 |> Seq.toList
+
             let mergedChapters =
-                chapters.Select(fun chapter i ->
-                    let chapter =
-                        match manga.Chapters |> Seq.tryFind (fun c -> c.Url = chapter.Url) with
-                        | Some c -> c
-                        | None -> chapter
-                    chapter.Index <- i
-                    chapter)
+                chapters
+                    .Select(fun chapter i ->
+                        let chapter =
+                            match manga.Chapters |> Seq.tryFind (fun c -> c.Url = chapter.Url) with
+                            | Some c -> c
+                            | None -> chapter
+
+                        chapter.Index <- i
+                        chapter)
                     .ToList()
+
             return mergedChapters
         }
 
-    let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) (chapterUrl: string) =
+    let downloadChapter
+        (newChapter: Chapter)
+        (chapterHtml: HtmlDocument)
+        (chapterTitle: string)
+        (mangaTitle: string)
+        (chapterUrl: string)
+        =
         taskResult {
             let! nodes = querySelectorAll chapterHtml ".wp-manga-chapter-img"
             // Remove duplicates and data URLs
             let imgs =
                 nodes
-                |> Seq.collect (fun img -> [HtmlNode.attributeValue "src" img; HtmlNode.attributeValue "data-src" img])
+                |> Seq.collect (fun img -> [
+                    HtmlNode.attributeValue "src" img
+                    HtmlNode.attributeValue "data-src" img
+                ])
                 |> Seq.filter (fun src -> not (src.StartsWith("data")))
                 |> Seq.distinct
                 |> Seq.map (resolveUrl chapterUrl)
+
             for i, img in Seq.indexed imgs do
                 use! imageStream = hc.GetStreamAsync(img)
                 let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
@@ -75,18 +85,22 @@ type ManyToonExtractor(
     let downloadChapters (manga: Manga) =
         taskResult {
             let newChapters =
-                    manga.Chapters
-                    |> Seq.filter (fun c -> c.DownloadStatus = NotDownloaded)
-                    |> Seq.toList
+                manga.Chapters
+                |> Seq.filter (fun c -> c.DownloadStatus = NotDownloaded)
+                |> Seq.toList
+
             for i, newChapter in Seq.indexed newChapters do
                 let! chapterHtml = HtmlDocument.tryLoadAsync hc newChapter.Url
                 let! chapterTitle = regexMatch (Regex("chapter-(\d+(-\d+)*)")) newChapter.Url
+
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
                     manga.Title,
                     chapterTitle,
                     (i + 1),
-                    newChapters.Length)
+                    newChapters.Length
+                )
+
                 do! downloadChapter newChapter chapterHtml chapterTitle manga.Title newChapter.Url
                 newChapter.Title <- Some chapterTitle
                 newChapter.DownloadStatus <- Downloaded

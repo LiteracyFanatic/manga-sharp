@@ -17,32 +17,37 @@ type MangaDexAtHomeResponse = {
 [<CLIMutable>]
 type MangaDexMangaResponse = {
     data: {|
-        attributes: {|
-            title: {|
-                en: string option
-                ja: string option
+        attributes:
+            {|
+                title:
+                    {|
+                        en: string option
+                        ja: string option
+                    |}
+                altTitles:
+                    {|
+                        en: string option
+                        ja: string option
+                    |}[]
+                chapterNumbersResetOnNewVolume: bool
             |}
-            altTitles: {|
-                en: string option
-                ja: string option
-            |}[]
-            chapterNumbersResetOnNewVolume: bool
-        |}
     |}
 }
 
 [<CLIMutable>]
 type MangaDexChapterResponse = {
-    data: {|
-        id: string
-        attributes: {|
-            translatedLanguage: string
-            publishAt: DateTime
-            volume: string option
-            chapter: string option
-            title: string option
-        |}
-    |}[]
+    data:
+        {|
+            id: string
+            attributes:
+                {|
+                    translatedLanguage: string
+                    publishAt: DateTime
+                    volume: string option
+                    chapter: string option
+                    title: string option
+                |}
+        |}[]
 }
 
 [<CLIMutable>]
@@ -70,13 +75,17 @@ type MangaDexApi(httpFactory: IHttpClientFactory) =
     member this.GetChaptersAsync(mangaId: string) =
         let rec loop offset acc =
             taskResult {
-                let apiUrl = $"https://api.mangadex.org/chapter?manga=%s{mangaId}&translatedLanguage%%5b%%5d=en&includeFutureUpdates=0&limit=100&offset=%i{offset}&order%%5bchapter%%5d=asc"
+                let apiUrl =
+                    $"https://api.mangadex.org/chapter?manga=%s{mangaId}&translatedLanguage%%5b%%5d=en&includeFutureUpdates=0&limit=100&offset=%i{offset}&order%%5bchapter%%5d=asc"
+
                 let! res = hc.GetFromJsonAsync<MangaDexChapterResponse>(apiUrl)
+
                 if Seq.isEmpty res.data then
                     return acc
                 else
                     return! loop (offset + 100) (Seq.append acc res.data)
             }
+
         loop 0 Seq.empty
 
     member this.PostHealthReportAsync(request: MangaDexHealthReportRequest) =

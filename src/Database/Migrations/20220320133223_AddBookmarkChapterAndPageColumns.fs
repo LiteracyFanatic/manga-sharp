@@ -14,284 +14,309 @@ open Microsoft.EntityFrameworkCore.Storage.ValueConversion
 type AddBookmarkChapterAndPageColumns() =
     inherit Migration()
 
-    override this.Up(migrationBuilder:MigrationBuilder) =
+    override this.Up(migrationBuilder: MigrationBuilder) =
         migrationBuilder.AddColumn<Guid>(
-            name = "BookmarkChapterId"
-            ,table = "Manga"
-            ,``type`` = "TEXT"
-            ,nullable = true
-            ) |> ignore
+            name = "BookmarkChapterId",
+            table = "Manga",
+            ``type`` = "TEXT",
+            nullable = true
+        )
+        |> ignore
 
-        migrationBuilder.AddColumn<Guid>(
-            name = "BookmarkPageId"
-            ,table = "Manga"
-            ,``type`` = "TEXT"
-            ,nullable = true
-            ) |> ignore
+        migrationBuilder.AddColumn<Guid>(name = "BookmarkPageId", table = "Manga", ``type`` = "TEXT", nullable = true)
+        |> ignore
 
         migrationBuilder.CreateIndex(
-            name = "IX_Manga_BookmarkChapterId"
-            ,table = "Manga"
-            ,column = "BookmarkChapterId"
-            ,unique = true
-            ) |> ignore
+            name = "IX_Manga_BookmarkChapterId",
+            table = "Manga",
+            column = "BookmarkChapterId",
+            unique = true
+        )
+        |> ignore
 
         migrationBuilder.CreateIndex(
-            name = "IX_Manga_BookmarkPageId"
-            ,table = "Manga"
-            ,column = "BookmarkPageId"
-            ,unique = true
-            ) |> ignore
+            name = "IX_Manga_BookmarkPageId",
+            table = "Manga",
+            column = "BookmarkPageId",
+            unique = true
+        )
+        |> ignore
 
         migrationBuilder.AddForeignKey(
-            name = "FK_Manga_Chapters_BookmarkChapterId"
-            ,table = "Manga"
-            ,column = "BookmarkChapterId"
-            ,principalTable = "Chapters"
-            ,principalColumn = "Id"
-        ) |> ignore
+            name = "FK_Manga_Chapters_BookmarkChapterId",
+            table = "Manga",
+            column = "BookmarkChapterId",
+            principalTable = "Chapters",
+            principalColumn = "Id"
+        )
+        |> ignore
 
         migrationBuilder.AddForeignKey(
-            name = "FK_Manga_Pages_BookmarkPageId"
-            ,table = "Manga"
-            ,column = "BookmarkPageId"
-            ,principalTable = "Pages"
-            ,principalColumn = "Id"
-        ) |> ignore
+            name = "FK_Manga_Pages_BookmarkPageId",
+            table = "Manga",
+            column = "BookmarkPageId",
+            principalTable = "Pages",
+            principalColumn = "Id"
+        )
+        |> ignore
 
-    override this.Down(migrationBuilder:MigrationBuilder) =
-        migrationBuilder.DropForeignKey(
-            name = "FK_Manga_Chapters_BookmarkChapterId"
-            ,table = "Manga"
-            ) |> ignore
+    override this.Down(migrationBuilder: MigrationBuilder) =
+        migrationBuilder.DropForeignKey(name = "FK_Manga_Chapters_BookmarkChapterId", table = "Manga")
+        |> ignore
 
-        migrationBuilder.DropForeignKey(
-            name = "FK_Manga_Pages_BookmarkPageId"
-            ,table = "Manga"
-            ) |> ignore
+        migrationBuilder.DropForeignKey(name = "FK_Manga_Pages_BookmarkPageId", table = "Manga")
+        |> ignore
 
-        migrationBuilder.DropIndex(
-            name = "IX_Manga_BookmarkChapterId"
-            ,table = "Manga"
-            ) |> ignore
+        migrationBuilder.DropIndex(name = "IX_Manga_BookmarkChapterId", table = "Manga")
+        |> ignore
 
-        migrationBuilder.DropIndex(
-            name = "IX_Manga_BookmarkPageId"
-            ,table = "Manga"
-            ) |> ignore
+        migrationBuilder.DropIndex(name = "IX_Manga_BookmarkPageId", table = "Manga")
+        |> ignore
 
-        migrationBuilder.DropColumn(
-            name = "BookmarkChapterId"
-            ,table = "Manga"
-            ) |> ignore
+        migrationBuilder.DropColumn(name = "BookmarkChapterId", table = "Manga")
+        |> ignore
 
-        migrationBuilder.DropColumn(
-            name = "BookmarkPageId"
-            ,table = "Manga"
-            ) |> ignore
+        migrationBuilder.DropColumn(name = "BookmarkPageId", table = "Manga") |> ignore
 
 
     override this.BuildTargetModel(modelBuilder: ModelBuilder) =
         modelBuilder.HasAnnotation("ProductVersion", "6.0.2") |> ignore
 
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Chapter", (fun b ->
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Chapter",
+            (fun b ->
 
-            b.Property<Guid>("Id")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
+                b
+                    .Property<Guid>("Id")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<DateTime>("Created")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
-                .HasDefaultValueSql("datetime()") |> ignore
-
-            b.Property<string>("DownloadStatus")
-                .IsRequired(true)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
+                b
+                    .Property<DateTime>("Created")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
+                    .HasDefaultValueSql("datetime()")
                 |> ignore
 
-            b.Property<int>("Index")
-                .IsRequired(true)
-                .HasColumnType("INTEGER")
+                b
+                    .Property<string>("DownloadStatus")
+                    .IsRequired(true)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<Guid>("MangaId")
-                .IsRequired(true)
-                .HasColumnType("TEXT")
+                b.Property<int>("Index").IsRequired(true).HasColumnType("INTEGER") |> ignore
+
+                b.Property<Guid>("MangaId").IsRequired(true).HasColumnType("TEXT") |> ignore
+
+                b
+                    .Property<string option>("Title")
+                    .IsRequired(false)
+                    .HasMaxLength(200)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string option>("Title")
-                .IsRequired(false)
-                .HasMaxLength(200)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Url")
+                    .IsRequired(true)
+                    .HasMaxLength(200)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string>("Url")
-                .IsRequired(true)
-                .HasMaxLength(200)
-                .HasColumnType("TEXT")
+                b.HasKey("Id") |> ignore
+
+
+                b.HasIndex("MangaId") |> ignore
+
+                b.ToTable("Chapters") |> ignore
+
+            )
+        )
+        |> ignore
+
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Manga",
+            (fun b ->
+
+                b
+                    .Property<Guid>("Id")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.HasKey("Id")
+                b.Property<DateTime option>("Accessed").IsRequired(false).HasColumnType("TEXT")
                 |> ignore
 
-
-            b.HasIndex("MangaId")
+                b
+                    .Property<string option>("Bookmark")
+                    .IsRequired(false)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.ToTable("Chapters") |> ignore
-
-        )) |> ignore
-
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Manga", (fun b ->
-
-            b.Property<Guid>("Id")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
+                b
+                    .Property<DateTime>("Created")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
+                    .HasDefaultValueSql("datetime()")
                 |> ignore
 
-            b.Property<DateTime option>("Accessed")
-                .IsRequired(false)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Direction")
+                    .IsRequired(true)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string option>("Bookmark")
-                .IsRequired(false)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Title")
+                    .IsRequired(true)
+                    .HasMaxLength(1000)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<DateTime>("Created")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
-                .HasDefaultValueSql("datetime()") |> ignore
-
-            b.Property<string>("Direction")
-                .IsRequired(true)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Url")
+                    .IsRequired(true)
+                    .HasMaxLength(200)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string>("Title")
-                .IsRequired(true)
-                .HasMaxLength(1000)
-                .HasColumnType("TEXT")
+                b
+                    .Property<Nullable<Guid>>("_BookmarkChapterId")
+                    .IsRequired(false)
+                    .HasColumnType("TEXT")
+                    .HasColumnName("BookmarkChapterId")
                 |> ignore
 
-            b.Property<string>("Url")
-                .IsRequired(true)
-                .HasMaxLength(200)
-                .HasColumnType("TEXT")
+                b
+                    .Property<Nullable<Guid>>("_BookmarkPageId")
+                    .IsRequired(false)
+                    .HasColumnType("TEXT")
+                    .HasColumnName("BookmarkPageId")
                 |> ignore
 
-            b.Property<Nullable<Guid>>("_BookmarkChapterId")
-                .IsRequired(false)
-                .HasColumnType("TEXT")
-                .HasColumnName("BookmarkChapterId") |> ignore
+                b.HasKey("Id") |> ignore
 
-            b.Property<Nullable<Guid>>("_BookmarkPageId")
-                .IsRequired(false)
-                .HasColumnType("TEXT")
-                .HasColumnName("BookmarkPageId") |> ignore
 
-            b.HasKey("Id")
+                b.HasIndex("Title").IsUnique() |> ignore
+
+
+                b.HasIndex("_BookmarkChapterId").IsUnique() |> ignore
+
+
+                b.HasIndex("_BookmarkPageId").IsUnique() |> ignore
+
+                b.ToTable("Manga") |> ignore
+
+            )
+        )
+        |> ignore
+
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Page",
+            (fun b ->
+
+                b
+                    .Property<Guid>("Id")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
                 |> ignore
 
+                b.Property<Guid>("ChapterId").IsRequired(true).HasColumnType("TEXT") |> ignore
 
-            b.HasIndex("Title")
-                .IsUnique()
+                b
+                    .Property<string>("File")
+                    .IsRequired(true)
+                    .HasMaxLength(2000)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-
-            b.HasIndex("_BookmarkChapterId")
-                .IsUnique()
+                b
+                    .Property<string>("Name")
+                    .IsRequired(true)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
+                b.HasKey("Id") |> ignore
 
-            b.HasIndex("_BookmarkPageId")
-                .IsUnique()
+
+                b.HasIndex("ChapterId") |> ignore
+
+                b.ToTable("Pages") |> ignore
+
+            )
+        )
+        |> ignore
+
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Chapter",
+            (fun b ->
+                b
+                    .HasOne("MangaSharp.Database.MangaDomain+Manga", "Manga")
+                    .WithMany("Chapters")
+                    .HasForeignKey("MangaId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
                 |> ignore
 
-            b.ToTable("Manga") |> ignore
+            )
+        )
+        |> ignore
 
-        )) |> ignore
-
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Page", (fun b ->
-
-            b.Property<Guid>("Id")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Manga",
+            (fun b ->
+                b
+                    .HasOne("MangaSharp.Database.MangaDomain+Chapter", "_BookmarkChapter")
+                    .WithOne()
+                    .HasForeignKey("MangaSharp.Database.MangaDomain+Manga", "_BookmarkChapterId")
                 |> ignore
 
-            b.Property<Guid>("ChapterId")
-                .IsRequired(true)
-                .HasColumnType("TEXT")
+                b
+                    .HasOne("MangaSharp.Database.MangaDomain+Page", "_BookmarkPage")
+                    .WithOne()
+                    .HasForeignKey("MangaSharp.Database.MangaDomain+Manga", "_BookmarkPageId")
                 |> ignore
 
-            b.Property<string>("File")
-                .IsRequired(true)
-                .HasMaxLength(2000)
-                .HasColumnType("TEXT")
+            )
+        )
+        |> ignore
+
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Page",
+            (fun b ->
+                b
+                    .HasOne("MangaSharp.Database.MangaDomain+Chapter", "Chapter")
+                    .WithMany("Pages")
+                    .HasForeignKey("ChapterId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
                 |> ignore
 
-            b.Property<string>("Name")
-                .IsRequired(true)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
-                |> ignore
+            )
+        )
+        |> ignore
 
-            b.HasKey("Id")
-                |> ignore
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Chapter",
+            (fun b ->
 
+                b.Navigation("Pages") |> ignore)
+        )
+        |> ignore
 
-            b.HasIndex("ChapterId")
-                |> ignore
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Manga",
+            (fun b ->
 
-            b.ToTable("Pages") |> ignore
-
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Chapter", (fun b ->
-            b.HasOne("MangaSharp.Database.MangaDomain+Manga", "Manga")
-                .WithMany("Chapters")
-                .HasForeignKey("MangaId")
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired()
-                |> ignore
-
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Manga", (fun b ->
-            b.HasOne("MangaSharp.Database.MangaDomain+Chapter", "_BookmarkChapter")
-                .WithOne().HasForeignKey("MangaSharp.Database.MangaDomain+Manga", "_BookmarkChapterId")
-                |> ignore
-            b.HasOne("MangaSharp.Database.MangaDomain+Page", "_BookmarkPage")
-                .WithOne().HasForeignKey("MangaSharp.Database.MangaDomain+Manga", "_BookmarkPageId")
-                |> ignore
-
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Page", (fun b ->
-            b.HasOne("MangaSharp.Database.MangaDomain+Chapter", "Chapter")
-                .WithMany("Pages")
-                .HasForeignKey("ChapterId")
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired()
-                |> ignore
-
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Chapter", (fun b ->
-
-            b.Navigation("Pages")
-            |> ignore
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Manga", (fun b ->
-
-            b.Navigation("Chapters")
-            |> ignore
-        )) |> ignore
-
+                b.Navigation("Chapters") |> ignore)
+        )
+        |> ignore

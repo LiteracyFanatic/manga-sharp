@@ -14,217 +14,222 @@ open Microsoft.EntityFrameworkCore.Storage.ValueConversion
 type AddPages() =
     inherit Migration()
 
-    override this.Up(migrationBuilder:MigrationBuilder) =
+    override this.Up(migrationBuilder: MigrationBuilder) =
         migrationBuilder.CreateTable(
-            name = "Pages"
-            ,columns = (fun table -> 
-            {|
-                Id =
-                    table.Column<Guid>(
-                        nullable = false
-                        ,``type`` = "TEXT"
-                    )
-                Name =
-                    table.Column<string>(
-                        nullable = false
-                        ,``type`` = "TEXT"
-                        ,maxLength = Nullable(10)
-                    )
-                File =
-                    table.Column<string>(
-                        nullable = false
-                        ,``type`` = "TEXT"
-                        ,maxLength = Nullable(2000)
-                    )
-                ChapterId =
-                    table.Column<Guid>(
-                        nullable = false
-                        ,``type`` = "TEXT"
-                    )
-            |})
-            , constraints =
-                (fun table -> 
-                    table.PrimaryKey("PK_Page", (fun x -> (x.Id) :> obj)
-                    ) |> ignore
+            name = "Pages",
+            columns =
+                (fun table -> {|
+                    Id = table.Column<Guid>(nullable = false, ``type`` = "TEXT")
+                    Name = table.Column<string>(nullable = false, ``type`` = "TEXT", maxLength = Nullable(10))
+                    File = table.Column<string>(nullable = false, ``type`` = "TEXT", maxLength = Nullable(2000))
+                    ChapterId = table.Column<Guid>(nullable = false, ``type`` = "TEXT")
+                |}),
+            constraints =
+                (fun table ->
+                    table.PrimaryKey("PK_Page", (fun x -> (x.Id) :> obj)) |> ignore
+
                     table.ForeignKey(
-                        name = "FK_Page_Chapters_ChapterId"
-                        ,column = (fun x -> (x.ChapterId) :> obj)
-                        ,principalTable = "Chapters"
-                        ,principalColumn = "Id"
-                        ,onDelete = ReferentialAction.Cascade
-                        ) |> ignore
+                        name = "FK_Page_Chapters_ChapterId",
+                        column = (fun x -> (x.ChapterId) :> obj),
+                        principalTable = "Chapters",
+                        principalColumn = "Id",
+                        onDelete = ReferentialAction.Cascade
+                    )
+                    |> ignore
 
                 )
-        ) |> ignore
+        )
+        |> ignore
 
-        migrationBuilder.CreateIndex(
-            name = "IX_Page_ChapterId"
-            ,table = "Pages"
-            ,column = "ChapterId"
-            ) |> ignore
+        migrationBuilder.CreateIndex(name = "IX_Page_ChapterId", table = "Pages", column = "ChapterId")
+        |> ignore
 
 
-    override this.Down(migrationBuilder:MigrationBuilder) =
-        migrationBuilder.DropTable(
-            name = "Pages"
-            ) |> ignore
+    override this.Down(migrationBuilder: MigrationBuilder) =
+        migrationBuilder.DropTable(name = "Pages") |> ignore
 
 
     override this.BuildTargetModel(modelBuilder: ModelBuilder) =
         modelBuilder.HasAnnotation("ProductVersion", "6.0.2") |> ignore
 
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Chapter", (fun b ->
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Chapter",
+            (fun b ->
 
-            b.Property<Guid>("Id")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
+                b
+                    .Property<Guid>("Id")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string>("DownloadStatus")
-                .IsRequired(true)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("DownloadStatus")
+                    .IsRequired(true)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<Guid>("MangaId")
-                .IsRequired(true)
-                .HasColumnType("TEXT")
+                b.Property<Guid>("MangaId").IsRequired(true).HasColumnType("TEXT") |> ignore
+
+                b
+                    .Property<string option>("Title")
+                    .IsRequired(false)
+                    .HasMaxLength(200)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string option>("Title")
-                .IsRequired(false)
-                .HasMaxLength(200)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Url")
+                    .IsRequired(true)
+                    .HasMaxLength(200)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string>("Url")
-                .IsRequired(true)
-                .HasMaxLength(200)
-                .HasColumnType("TEXT")
+                b.HasKey("Id") |> ignore
+
+
+                b.HasIndex("MangaId") |> ignore
+
+                b.ToTable("Chapters") |> ignore
+
+            )
+        )
+        |> ignore
+
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Manga",
+            (fun b ->
+
+                b
+                    .Property<Guid>("Id")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.HasKey("Id")
+                b.Property<DateTime option>("Accessed").IsRequired(false).HasColumnType("TEXT")
                 |> ignore
 
-
-            b.HasIndex("MangaId")
+                b
+                    .Property<string option>("Bookmark")
+                    .IsRequired(false)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.ToTable("Chapters") |> ignore
-
-        )) |> ignore
-
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Manga", (fun b ->
-
-            b.Property<Guid>("Id")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Direction")
+                    .IsRequired(true)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<DateTime option>("Accessed")
-                .IsRequired(false)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Title")
+                    .IsRequired(true)
+                    .HasMaxLength(1000)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string option>("Bookmark")
-                .IsRequired(false)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Url")
+                    .IsRequired(true)
+                    .HasMaxLength(200)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string>("Direction")
-                .IsRequired(true)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
+                b.HasKey("Id") |> ignore
+
+
+                b.HasIndex("Title").IsUnique() |> ignore
+
+                b.ToTable("Manga") |> ignore
+
+            )
+        )
+        |> ignore
+
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Page",
+            (fun b ->
+
+                b
+                    .Property<Guid>("Id")
+                    .IsRequired(true)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string>("Title")
-                .IsRequired(true)
-                .HasMaxLength(1000)
-                .HasColumnType("TEXT")
+                b.Property<Guid>("ChapterId").IsRequired(true).HasColumnType("TEXT") |> ignore
+
+                b
+                    .Property<string>("File")
+                    .IsRequired(true)
+                    .HasMaxLength(2000)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.Property<string>("Url")
-                .IsRequired(true)
-                .HasMaxLength(200)
-                .HasColumnType("TEXT")
+                b
+                    .Property<string>("Name")
+                    .IsRequired(true)
+                    .HasMaxLength(10)
+                    .HasColumnType("TEXT")
                 |> ignore
 
-            b.HasKey("Id")
+                b.HasKey("Id") |> ignore
+
+
+                b.HasIndex("ChapterId") |> ignore
+
+                b.ToTable("Pages") |> ignore
+
+            )
+        )
+        |> ignore
+
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Chapter",
+            (fun b ->
+                b
+                    .HasOne("MangaSharp.Database.MangaDomain+Manga", "Manga")
+                    .WithMany("Chapters")
+                    .HasForeignKey("MangaId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
                 |> ignore
 
+            )
+        )
+        |> ignore
 
-            b.HasIndex("Title")
-                .IsUnique()
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Page",
+            (fun b ->
+                b
+                    .HasOne("MangaSharp.Database.MangaDomain+Chapter", "Chapter")
+                    .WithMany("Pages")
+                    .HasForeignKey("ChapterId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
                 |> ignore
 
-            b.ToTable("Manga") |> ignore
+            )
+        )
+        |> ignore
 
-        )) |> ignore
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Chapter",
+            (fun b ->
 
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Page", (fun b ->
+                b.Navigation("Pages") |> ignore)
+        )
+        |> ignore
 
-            b.Property<Guid>("Id")
-                .IsRequired(true)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("TEXT")
-                |> ignore
+        modelBuilder.Entity(
+            "MangaSharp.Database.MangaDomain+Manga",
+            (fun b ->
 
-            b.Property<Guid>("ChapterId")
-                .IsRequired(true)
-                .HasColumnType("TEXT")
-                |> ignore
-
-            b.Property<string>("File")
-                .IsRequired(true)
-                .HasMaxLength(2000)
-                .HasColumnType("TEXT")
-                |> ignore
-
-            b.Property<string>("Name")
-                .IsRequired(true)
-                .HasMaxLength(10)
-                .HasColumnType("TEXT")
-                |> ignore
-
-            b.HasKey("Id")
-                |> ignore
-
-
-            b.HasIndex("ChapterId")
-                |> ignore
-
-            b.ToTable("Pages") |> ignore
-
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Chapter", (fun b ->
-            b.HasOne("MangaSharp.Database.MangaDomain+Manga", "Manga")
-                .WithMany("Chapters")
-                .HasForeignKey("MangaId")
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired()
-                |> ignore
-
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Page", (fun b ->
-            b.HasOne("MangaSharp.Database.MangaDomain+Chapter", "Chapter")
-                .WithMany("Pages")
-                .HasForeignKey("ChapterId")
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired()
-                |> ignore
-
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Chapter", (fun b ->
-
-            b.Navigation("Pages")
-            |> ignore
-        )) |> ignore
-        modelBuilder.Entity("MangaSharp.Database.MangaDomain+Manga", (fun b ->
-
-            b.Navigation("Chapters")
-            |> ignore
-        )) |> ignore
-
+                b.Navigation("Chapters") |> ignore)
+        )
+        |> ignore

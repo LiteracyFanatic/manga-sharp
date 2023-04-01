@@ -1,4 +1,5 @@
 #nowarn "20"
+
 open Argu
 open EntityFrameworkCore.FSharp.DbContextHelpers
 open Microsoft.EntityFrameworkCore
@@ -36,17 +37,20 @@ let getCliApp () =
         // development
         if not (ctx.HostingEnvironment.IsDevelopment()) then
             config.MinimumLevel.Override("System.Net.Http.HttpClient", Events.LogEventLevel.Warning)
-            config.MinimumLevel.Override("Microsoft", Events.LogEventLevel.Warning) |> ignore)
+
+            config.MinimumLevel.Override("Microsoft", Events.LogEventLevel.Warning)
+            |> ignore)
 
     builder.ConfigureServices(fun services ->
         services.AddMangaContext()
         services.AddTransient<MangaRepository>()
         services.AddJsonSerializer()
 
-        services.AddHttpClient(fun hc ->
-            hc.Timeout <- TimeSpan.FromSeconds(20.))
+        services
+            .AddHttpClient(fun hc -> hc.Timeout <- TimeSpan.FromSeconds(20.))
             .AddTransientHttpErrorPolicy(fun policyBuilder ->
-                policyBuilder.WaitAndRetryAsync(3, fun n -> TimeSpan.FromSeconds(2 ** n)))
+                policyBuilder.WaitAndRetryAsync(3, (fun n -> TimeSpan.FromSeconds(2 ** n))))
+
         services.AddSingleton<PageSaver>()
         services.AddTransient<MangaDexApi>()
         services.AddTransient<IMangaExtractor, MangaDexExtractor>()
@@ -65,12 +69,13 @@ let read (args: ParseResults<ReadArgs>) =
     let port = args.TryGetResult(Port)
     let openInBrowser = not (args.Contains(No_Open))
     let server = WebApp.create port
+
     let manga =
         using (server.Services.CreateScope()) (fun scope ->
             let db = scope.ServiceProvider.GetRequiredService<MangaContext>()
+
             match args.Contains(ReadArgs.Last), args.TryGetResult(ReadArgs.Title) with
-            | true, Some _ ->
-                args.Raise("Cannot specify --last and --title at the same time.")
+            | true, Some _ -> args.Raise("Cannot specify --last and --title at the same time.")
             | true, None ->
                 db.Manga
                     .AsNoTracking()
@@ -87,23 +92,31 @@ let read (args: ParseResults<ReadArgs>) =
                     .Include(fun m -> m.Chapters)
                     .TryFirst(fun m -> m.Title = title)
             | false, None -> None)
+
     if openInBrowser then
         let url =
             match manga with
             | Some m -> WebApp.getMangaUrl port m
             | None -> WebApp.getIndexUrl port
+
         let lifetime = server.Services.GetRequiredService<IHostApplicationLifetime>()
-        lifetime.ApplicationStarted.Register(fun () -> openInDefaultApp url |> ignore) |> ignore
+
+        lifetime.ApplicationStarted.Register(fun () -> openInDefaultApp url |> ignore)
+        |> ignore
+
     server.Run()
 
 [<EntryPoint>]
 let main argv =
     let parser =
         ArgumentParser.Create<Args>(
-            programName="manga",
-            helpTextMessage="Download, update, and read manga from a variety of sites.",
-            errorHandler = ProcessExiter())
+            programName = "manga",
+            helpTextMessage = "Download, update, and read manga from a variety of sites.",
+            errorHandler = ProcessExiter()
+        )
+
     let results = parser.ParseCommandLine(argv)
+
     match results.GetSubCommand() with
     | Download downloadArgs -> (getCliApp ()).Download(downloadArgs)
     | Update updateArgs -> (getCliApp ()).Update(updateArgs)
@@ -114,10 +127,12 @@ let main argv =
     | Unarchive unarchiveArgs -> (getCliApp ()).Unarchive(unarchiveArgs)
     | Version ->
         let version =
-            Assembly.GetEntryAssembly()
+            Assembly
+                .GetEntryAssembly()
                 .GetCustomAttributes<AssemblyMetadataAttribute>()
                 .First(fun a -> a.Key = "GitTag")
                 .Value
+
         printfn "%s" version
 
     0

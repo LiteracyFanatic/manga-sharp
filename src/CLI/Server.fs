@@ -28,7 +28,7 @@ module WebApp =
         PageId: Guid option
     }
 
-    let putBookmarkHandler (mangaId: Guid) (request: PutBookmarkRequest): HttpHandler =
+    let putBookmarkHandler (mangaId: Guid) (request: PutBookmarkRequest) : HttpHandler =
         fun next ctx ->
             task {
                 let db = ctx.GetService<MangaContext>()
@@ -39,14 +39,11 @@ module WebApp =
                 return! Successful.NO_CONTENT next ctx
             }
 
-    let servePage (pageId: Guid): HttpHandler =
+    let servePage (pageId: Guid) : HttpHandler =
         fun next ctx ->
             task {
                 let db = ctx.GetService<MangaContext>()
-                let! page =
-                    db.Pages
-                        .AsNoTracking()
-                        .FirstAsync(fun p -> p.Id = pageId)
+                let! page = db.Pages.AsNoTracking().FirstAsync(fun p -> p.Id = pageId)
                 return! streamFile true page.File None None next ctx
             }
 
@@ -65,6 +62,7 @@ module WebApp =
         fun next ctx ->
             task {
                 let db = ctx.GetService<MangaContext>()
+
                 let! manga =
                     db.Manga
                         .Include("_BookmarkChapter")
@@ -72,6 +70,7 @@ module WebApp =
                         .Include(fun m -> m.Chapters)
                         .OrderBy(fun m -> m.Title)
                         .ToListAsync()
+
                 let response =
                     manga
                     |> Seq.map (fun m ->
@@ -79,12 +78,12 @@ module WebApp =
                             m.Chapters
                             |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
                             |> Seq.sortBy (fun c -> c.Index)
+
                         let chapterIndex =
                             match m.BookmarkChapterId with
-                            | Some chapterId ->
-                                chapters
-                                |> Seq.findIndex (fun c -> c.Id = chapterId)
+                            | Some chapterId -> chapters |> Seq.findIndex (fun c -> c.Id = chapterId)
                             | None -> 0
+
                         {
                             Id = m.Id
                             Title = m.Title
@@ -94,6 +93,7 @@ module WebApp =
                             Direction = m.Direction
                             SourceUrl = m.Url
                         })
+
                 return! json response next ctx
             }
 
@@ -105,39 +105,49 @@ module WebApp =
         ChapterTitle: string option
         PreviousChapterUrl: string option
         NextChapterUrl: string option
-        OtherChapters: {|
-            Id: Guid
-            Title: string
-            Url: string
-            DownloadStatus: DownloadStatus
-        |}[]
+        OtherChapters:
+            {|
+                Id: Guid
+                Title: string
+                Url: string
+                DownloadStatus: DownloadStatus
+            |}[]
         DownloadStatus: DownloadStatus
-        Pages: {|
-            Id: Guid
-            Name: string
-            Width: int
-            Height: int
-        |}[]
+        Pages:
+            {|
+                Id: Guid
+                Name: string
+                Width: int
+                Height: int
+            |}[]
     }
 
-    let getChapterHandler (chapterId: Guid): HttpHandler =
-        fun next ctx -> task {
-            let db = ctx.GetService<MangaContext>()
-            let! manga =
-                db.Manga
-                    .Include(fun manga -> manga.Chapters.Where(fun chapter -> chapter.Title.IsSome).OrderBy(fun chapter -> chapter.Index) :> IEnumerable<_>)
-                    .ThenInclude(fun (chapter: Chapter) -> chapter.Pages.OrderBy(fun page -> page.Name))
-                    .AsSplitQuery()
-                    .FirstAsync(fun manga -> manga.Chapters.Select(fun c -> c.Id).Contains(chapterId))
-            manga.Accessed <- Some DateTime.UtcNow
-            let! _ = db.SaveChangesAsync()
-            let chapter = manga.Chapters |> Seq.find (fun c -> c.Id = chapterId)
-            let getQueryParams (page: Page) =
-                match manga.Direction with
-                | Horizontal -> $"?page=%s{page.Name}"
-                | Vertical -> ""
-            let response =
-                {
+    let getChapterHandler (chapterId: Guid) : HttpHandler =
+        fun next ctx ->
+            task {
+                let db = ctx.GetService<MangaContext>()
+
+                let! manga =
+                    db.Manga
+                        .Include(fun manga ->
+                            manga.Chapters
+                                .Where(fun chapter -> chapter.Title.IsSome)
+                                .OrderBy(fun chapter -> chapter.Index)
+                            :> IEnumerable<_>)
+                        .ThenInclude(fun (chapter: Chapter) -> chapter.Pages.OrderBy(fun page -> page.Name))
+                        .AsSplitQuery()
+                        .FirstAsync(fun manga -> manga.Chapters.Select(fun c -> c.Id).Contains(chapterId))
+
+                manga.Accessed <- Some DateTime.UtcNow
+                let! _ = db.SaveChangesAsync()
+                let chapter = manga.Chapters |> Seq.find (fun c -> c.Id = chapterId)
+
+                let getQueryParams (page: Page) =
+                    match manga.Direction with
+                    | Horizontal -> $"?page=%s{page.Name}"
+                    | Vertical -> ""
+
+                let response = {
                     MangaId = chapter.MangaId
                     Direction = chapter.Manga.Direction
                     ChapterId = chapter.Id
@@ -151,6 +161,7 @@ module WebApp =
                                 |> Seq.tryLast
                                 |> Option.map getQueryParams
                                 |> Option.defaultValue ""
+
                             $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{queryParams}")
                     NextChapterUrl =
                         tryNextChapter manga chapter
@@ -161,57 +172,54 @@ module WebApp =
                                 |> Seq.tryHead
                                 |> Option.map getQueryParams
                                 |> Option.defaultValue ""
+
                             $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{queryParams}")
                     OtherChapters =
                         manga.Chapters
-                        |> Seq.map (fun chapter ->
-                            {|
-                                Id = chapter.Id
-                                Title = chapter.Title.Value
-                                Url = $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
-                                DownloadStatus = chapter.DownloadStatus
-                            |})
+                        |> Seq.map (fun chapter -> {|
+                            Id = chapter.Id
+                            Title = chapter.Title.Value
+                            Url = $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
+                            DownloadStatus = chapter.DownloadStatus
+                        |})
                         |> Seq.toArray
                     DownloadStatus = chapter.DownloadStatus
                     Pages =
                         chapter.Pages
-                        |> Seq.map (fun page ->
-                            {|
-                                Id = page.Id
-                                Name = page.Name
-                                Width = page.Width
-                                Height = page.Height
-                            |})
+                        |> Seq.map (fun page -> {|
+                            Id = page.Id
+                            Name = page.Name
+                            Width = page.Width
+                            Height = page.Height
+                        |})
                         |> Seq.toArray
                 }
-            return! json response next ctx
-        }
+
+                return! json response next ctx
+            }
 
     let serveSpa: HttpHandler =
-        fun next ctx -> task {
-            let provider = ctx.GetService<IFileProvider>()
-            use stream = provider.GetFileInfo("index.html").CreateReadStream()
-            return! streamData true stream None None next ctx
-        }
+        fun next ctx ->
+            task {
+                let provider = ctx.GetService<IFileProvider>()
+                use stream = provider.GetFileInfo("index.html").CreateReadStream()
+                return! streamData true stream None None next ctx
+            }
 
-    let endpoints =
-        [
-            GET [
-                routef "/pages/%O" (fun id -> privateResponseCaching (int (TimeSpan.FromDays(365).TotalSeconds)) None >=> servePage id)
-            ]
-            subRoute "/api" [
-                GET [
-                    route "/manga" getMangaHandler
-                    routef "/chapters/%O" getChapterHandler
-                ]
-                PUT [
-                    routef "/manga/%O/bookmark" (putBookmarkHandler >> bindJson<PutBookmarkRequest>)
-                ]
-            ]
-            GET [
-                route "{*rest}" serveSpa
+    let endpoints = [
+        GET [
+            routef "/pages/%O" (fun id ->
+                privateResponseCaching (int (TimeSpan.FromDays(365).TotalSeconds)) None
+                >=> servePage id)
+        ]
+        subRoute "/api" [
+            GET [ route "/manga" getMangaHandler; routef "/chapters/%O" getChapterHandler ]
+            PUT [
+                routef "/manga/%O/bookmark" (putBookmarkHandler >> bindJson<PutBookmarkRequest>)
             ]
         ]
+        GET [ route "{*rest}" serveSpa ]
+    ]
 
     let defaultPort = 8080
 
@@ -222,7 +230,9 @@ module WebApp =
     let getMangaUrl (port: int option) (manga: Manga) =
         $"%s{getIndexUrl port}/%s{getBookmarkUrl manga}/"
 
-    type AssemblyMarker() = class end
+    type AssemblyMarker() =
+        class
+        end
 
     let create (port: int option) =
         let hostBuilder = Host.CreateDefaultBuilder()
@@ -231,13 +241,15 @@ module WebApp =
             config.Enrich.FromLogContext()
             config.WriteTo.Console()
             // Disable default ASP.NET Core logging because we are using SerilogRequestLogging instead
-            config.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning) |> ignore)
+            config.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            |> ignore)
 
         hostBuilder.ConfigureWebHostDefaults(fun webHostBuilder ->
 
             webHostBuilder.UseUrls(getIndexUrl port)
 
-            let fileProvider = ManifestEmbeddedFileProvider(Assembly.GetAssembly(typeof<AssemblyMarker>), "wwwroot")
+            let fileProvider =
+                ManifestEmbeddedFileProvider(Assembly.GetAssembly(typeof<AssemblyMarker>), "wwwroot")
 
             webHostBuilder.ConfigureServices(fun services ->
                 services.AddMangaContext()
@@ -250,6 +262,9 @@ module WebApp =
                 app.UseDeveloperExceptionPage()
                 app.UseSerilogRequestLogging(fun options -> options.IncludeQueryInRequestPath <- true)
                 app.UseRouting()
-                app.UseEndpoints(fun options -> options.MapGiraffeEndpoints(endpoints)) |> ignore) |> ignore)
+
+                app.UseEndpoints(fun options -> options.MapGiraffeEndpoints(endpoints))
+                |> ignore)
+            |> ignore)
 
         hostBuilder.Build()

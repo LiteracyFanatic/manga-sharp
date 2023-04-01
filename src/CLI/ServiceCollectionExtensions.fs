@@ -19,6 +19,7 @@ open MangaSharp.Extractors.Util
 module Extensions =
 
     type IServiceCollection with
+
         member this.AddMangaContext() =
             let serviceProvider = this.BuildServiceProvider()
             let env = serviceProvider.GetRequiredService<IHostEnvironment>()
@@ -28,16 +29,18 @@ module Extensions =
                 options.UseSqlite($"Data Source=%s{dbFile};foreign keys=true")
                 options.UseFSharpTypes()
                 options.EnableSensitiveDataLogging()
+
                 options.ConfigureWarnings(fun w ->
                     if not (env.IsDevelopment()) then
                         w.Ignore(CoreEventId.SensitiveDataLoggingEnabledWarning) |> ignore
-                    w.Throw(RelationalEventId.MultipleCollectionIncludeWarning) |> ignore) |> ignore)
+
+                    w.Throw(RelationalEventId.MultipleCollectionIncludeWarning) |> ignore)
+                |> ignore)
 
         member this.AddJsonSerializer() =
             let serializationOptions =
-                JsonSerializerOptions(
-                    WriteIndented = true,
-                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping)
+                JsonSerializerOptions(WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping)
+
             JsonFSharpOptions
                 .Default()
                 .WithUnionNamedFields()

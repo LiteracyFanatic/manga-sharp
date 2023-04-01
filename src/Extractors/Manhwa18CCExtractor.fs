@@ -11,12 +11,14 @@ open MangaSharp.Database.MangaDomain
 open MangaSharp.Extractors.Util
 open FsToolkit.ErrorHandling
 
-type Manwha18CCExtractor(
-    httpFactory: IHttpClientFactory,
-    db: MangaContext,
-    mangaRepository: MangaRepository,
-    pageSaver: PageSaver,
-    logger: ILogger<Manwha18CCExtractor>) =
+type Manwha18CCExtractor
+    (
+        httpFactory: IHttpClientFactory,
+        db: MangaContext,
+        mangaRepository: MangaRepository,
+        pageSaver: PageSaver,
+        logger: ILogger<Manwha18CCExtractor>
+    ) =
 
     let hc = httpFactory.CreateClient()
     do hc.DefaultRequestHeaders.Referrer <- Uri("https://manhwa18.cc/")
@@ -24,29 +26,37 @@ type Manwha18CCExtractor(
     let getChaptersAsync (url: string) (html: HtmlDocument) (manga: Manga) =
         taskResult {
             let! chapterUrls = extractChapterUrls ".chapter-name" url html
+
             let chapters =
                 chapterUrls
-                |> Seq.map (fun url ->
-                    Chapter(
-                        Url = url,
-                        Title = None,
-                        DownloadStatus = NotDownloaded))
+                |> Seq.map (fun url -> Chapter(Url = url, Title = None, DownloadStatus = NotDownloaded))
                 |> Seq.toList
+
             let mergedChapters =
-                chapters.Select(fun chapter i ->
-                    let chapter =
-                        match manga.Chapters |> Seq.tryFind (fun c -> c.Url = chapter.Url) with
-                        | Some c -> c
-                        | None -> chapter
-                    chapter.Index <- i
-                    chapter)
+                chapters
+                    .Select(fun chapter i ->
+                        let chapter =
+                            match manga.Chapters |> Seq.tryFind (fun c -> c.Url = chapter.Url) with
+                            | Some c -> c
+                            | None -> chapter
+
+                        chapter.Index <- i
+                        chapter)
                     .ToList()
+
             return mergedChapters
         }
 
-    let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) (chapterUrl: string) =
+    let downloadChapter
+        (newChapter: Chapter)
+        (chapterHtml: HtmlDocument)
+        (chapterTitle: string)
+        (mangaTitle: string)
+        (chapterUrl: string)
+        =
         taskResult {
             let! imgs = extractImageUrls ".read-content img" chapterUrl chapterHtml
+
             for i, img in Seq.indexed imgs do
                 use! imageStream = hc.GetStreamAsync(img)
                 let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
@@ -56,18 +66,22 @@ type Manwha18CCExtractor(
     let downloadChapters (manga: Manga) =
         taskResult {
             let newChapters =
-                    manga.Chapters
-                    |> Seq.filter (fun c -> c.DownloadStatus = NotDownloaded)
-                    |> Seq.toList
+                manga.Chapters
+                |> Seq.filter (fun c -> c.DownloadStatus = NotDownloaded)
+                |> Seq.toList
+
             for i, newChapter in Seq.indexed newChapters do
                 let! chapterHtml = HtmlDocument.tryLoadAsync hc newChapter.Url
                 let! chapterTitle = regexMatch (Regex("chapter-(\d+(-\d+)*)")) newChapter.Url
+
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
                     manga.Title,
                     chapterTitle,
                     (i + 1),
-                    newChapters.Length)
+                    newChapters.Length
+                )
+
                 do! downloadChapter newChapter chapterHtml chapterTitle manga.Title newChapter.Url
                 newChapter.Title <- Some chapterTitle
                 newChapter.DownloadStatus <- Downloaded
