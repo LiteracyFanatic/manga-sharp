@@ -80,7 +80,7 @@ type ManganatoExtractor(
     interface IMangaExtractor with
 
         member this.IsMatch(url: string) =
-            Regex("https://(read)?manganato\.com/manga.*").IsMatch(url)
+            Regex("https://(chap)?manganato\.com/manga.*").IsMatch(url)
 
         member this.DownloadAsync(url: string, direction: Direction) =
             taskResult {
