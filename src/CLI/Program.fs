@@ -5,10 +5,13 @@ open EntityFrameworkCore.FSharp.DbContextHelpers
 open Microsoft.EntityFrameworkCore
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Configuration
 open Polly
+open Polly.Extensions.Http
 open System
 open System.Linq
+open System.Net.Http
 open System.Reflection
 open Serilog
 
@@ -48,8 +51,17 @@ let getCliApp () =
 
         services
             .AddHttpClient(fun hc -> hc.Timeout <- TimeSpan.FromSeconds(20.))
-            .AddTransientHttpErrorPolicy(fun policyBuilder ->
-                policyBuilder.WaitAndRetryAsync(3, (fun n -> TimeSpan.FromSeconds(2 ** n))))
+            .AddPolicyHandler(fun services _ ->
+                let logger = services.GetRequiredService<ILogger<HttpClient>>()
+
+                HttpPolicyExtensions
+                    .HandleTransientHttpError()
+                    .WaitAndRetryAsync(
+                        3,
+                        (fun n -> TimeSpan.FromSeconds(2 ** n)),
+                        (fun _ delay -> logger.LogError("Retrying request after {Delay}", delay))
+                    )
+                :> IAsyncPolicy<HttpResponseMessage>)
 
         services.AddSingleton<PageSaver>()
         services.AddTransient<MangaDexApi>()
