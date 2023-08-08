@@ -18,7 +18,7 @@ MangaSharp is a CLI that supports downloading manga and other comics from a vari
 
 ### Download an executable
 
-Just download the appropriate executable for your operating system from the [releases](https://github.com/LiteracyFanatic/manga-sharp/releases). You will also need to have the [.NET 6.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) installed. This is the recommended installation strategy, but self-contained versions of the executables are also provided for convenience. Note that these are much larger since they bundle a copy of the runtime with the executable.
+Just download the appropriate executable for your operating system from the [releases](https://github.com/LiteracyFanatic/manga-sharp/releases). You will also need to have the [.NET 7.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) installed. This is the recommended installation strategy, but self-contained versions of the executables are also provided for convenience. Note that these are much larger since they bundle a copy of the runtime with the executable.
 
 ### AUR
 
