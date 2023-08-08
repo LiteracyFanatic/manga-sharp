@@ -23,8 +23,8 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Flurl" Version="3.0.7" />
     <PackageReference Include="Fsharp.data" Version="6.2.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.6.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.6.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.9.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.9.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.4" />
   </ItemGroup>
 

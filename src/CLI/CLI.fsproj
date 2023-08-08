@@ -29,15 +29,15 @@
     <PackageReference Include="Flurl" Version="3.0.7" />
     <PackageReference Include="Fsharp.data" Version="6.2.0" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.1.23" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.6.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.6.0" />
-    <PackageReference Include="Giraffe" Version="6.0.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.9.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.9.0" />
+    <PackageReference Include="Giraffe" Version="6.2.0" />
     <PackageReference Include="Giraffe.ViewEngine" Version="2.0.0-alpha-1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="7.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="7.0.10" />
     <PackageReference Include="Serilog.AspNetCore" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="7.0.5" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="7.0.10" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Database\Database.fsproj" />
