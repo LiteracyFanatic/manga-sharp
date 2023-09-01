@@ -1,5 +1,6 @@
 #nowarn "20"
 
+open System.Reflection
 open Argu
 open EntityFrameworkCore.FSharp.DbContextHelpers
 open Microsoft.EntityFrameworkCore
@@ -12,9 +13,9 @@ open Polly.Extensions.Http
 open System
 open System.Linq
 open System.Net.Http
-open System.Reflection
 open Serilog
 
+open MangaSharp
 open MangaSharp.CLI
 open MangaSharp.CLI.Arguments
 open MangaSharp.CLI.Server
@@ -63,6 +64,16 @@ let getCliApp () =
                     )
                 :> IAsyncPolicy<HttpResponseMessage>)
 
+        let versionInfo = {
+            Version =
+                Assembly
+                    .GetEntryAssembly()
+                    .GetCustomAttributes<AssemblyMetadataAttribute>()
+                    .First(fun a -> a.Key = "GitTag")
+                    .Value
+        }
+
+        services.AddSingleton<VersionInfo>(versionInfo)
         services.AddSingleton<PageSaver>()
         services.AddTransient<MangaDexApi>()
         services.AddTransient<IMangaExtractor, MangaDexExtractor>()
@@ -137,14 +148,6 @@ let main argv =
     | Rm rmArgs -> (getCliApp ()).Rm(rmArgs)
     | Archive archiveArgs -> (getCliApp ()).Archive(archiveArgs)
     | Unarchive unarchiveArgs -> (getCliApp ()).Unarchive(unarchiveArgs)
-    | Version ->
-        let version =
-            Assembly
-                .GetEntryAssembly()
-                .GetCustomAttributes<AssemblyMetadataAttribute>()
-                .First(fun a -> a.Key = "GitTag")
-                .Value
-
-        printfn "%s" version
+    | Version -> (getCliApp ()).Version()
 
     0

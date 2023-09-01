@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="VersionInfo.fs" />
     <Compile Include="Util.fs" />
     <Compile Include="PageSaver.fs" />
     <Compile Include="MangaDexApi.fs" />

@@ -7,6 +7,7 @@ open Microsoft.EntityFrameworkCore
 open Microsoft.Extensions.Logging
 open EntityFrameworkCore.FSharp.DbContextHelpers
 open Argu
+open MangaSharp
 open MangaSharp.Database
 open MangaSharp.Database.MangaDomain
 open MangaSharp.Extractors
@@ -28,6 +29,7 @@ type LsJson = {
 
 type Application
     (
+        versionInfo: VersionInfo,
         db: MangaContext,
         extractors: IEnumerable<IMangaExtractor>,
         jsonSerializer: Json.ISerializer,
@@ -408,3 +410,5 @@ type Application
             | None ->
                 logger.LogError("Manga {Title} could not be found", title)
                 exit 1
+
+    member this.Version() = printfn $"%s{versionInfo.Version}"
