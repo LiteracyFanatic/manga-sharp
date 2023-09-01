@@ -186,6 +186,8 @@ module WebApp =
                     DownloadStatus = chapter.DownloadStatus
                     Pages =
                         chapter.Pages
+                        |> Seq.distinctBy (fun page -> page.Name)
+                        |> Seq.sortBy (fun page -> page.Name)
                         |> Seq.map (fun page -> {|
                             Id = page.Id
                             Name = page.Name
