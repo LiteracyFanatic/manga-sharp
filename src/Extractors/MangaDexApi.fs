@@ -2,8 +2,10 @@ namespace MangaSharp.Extractors.MangaDex
 
 open System
 open System.Net.Http
+open System.Net.Http.Headers
 open System.Net.Http.Json
 open FsToolkit.ErrorHandling
+open MangaSharp
 
 [<CLIMutable>]
 type MangaDexAtHomeResponse = {
@@ -59,10 +61,14 @@ type MangaDexHealthReportRequest = {
     duration: int64
 }
 
-type MangaDexApi(httpFactory: IHttpClientFactory) =
+type MangaDexApi(httpFactory: IHttpClientFactory, versionInfo: VersionInfo) =
 
     let hc = httpFactory.CreateClient()
     do hc.Timeout <- TimeSpan.FromSeconds(20.)
+
+    let userAgent = ProductInfoHeaderValue("MangaSharp", versionInfo.Version)
+
+    do hc.DefaultRequestHeaders.UserAgent.Add(userAgent)
 
     member this.GetAtHomeAsync(chapterId: string) =
         let apiUrl = $"https://api.mangadex.org/at-home/server/%s{chapterId}"
