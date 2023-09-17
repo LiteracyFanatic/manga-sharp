@@ -8,6 +8,7 @@ open System.Linq
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.EntityFrameworkCore
+open Microsoft.Extensions.Configuration.Json
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.FileProviders
@@ -238,6 +239,10 @@ module WebApp =
 
     let create (port: int option) =
         let hostBuilder = Host.CreateDefaultBuilder()
+
+        hostBuilder.ConfigureAppConfiguration(fun configBuilder ->
+            configBuilder.Sources.OfType<JsonConfigurationSource>()
+            |> Seq.iter (fun source -> source.ReloadOnChange <- false))
 
         hostBuilder.UseSerilog(fun _ config ->
             config.Enrich.FromLogContext()
