@@ -37,7 +37,7 @@ type ReadArgs =
             | Title _ -> "the manga to read."
             | Last -> "use the most recently read manga."
             | Port _ -> "the port to run the server on."
-            | No_Open _ -> "don't automatically open the default browser."
+            | No_Open -> "don't automatically open the default browser."
 
 type LsArgs =
     | Json
