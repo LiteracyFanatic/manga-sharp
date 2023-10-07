@@ -99,7 +99,7 @@ type Application
             |> List.map (fun m ->
                 let chapters =
                     m.Chapters
-                        .Where(fun c -> c.DownloadStatus = Downloaded)
+                        .Where(fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
                         .OrderBy(fun c -> c.Index)
                         .ToList()
 
