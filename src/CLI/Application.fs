@@ -24,7 +24,7 @@ type LsJson = {
     BookmarkChapter: string option
     BookmarkPage: string option
     BookmarkUrl: string option
-    FirstPageUrl: string
+    FirstPageUrl: string option
 }
 
 type Application
@@ -103,7 +103,10 @@ type Application
                         .OrderBy(fun c -> c.Index)
                         .ToList()
 
-                let firstChapter = chapters.First()
+                let firstPageUrl =
+                    chapters
+                    |> Seq.tryHead
+                    |> Option.map (fun c -> $"/chapters/%A{c.Id}/%s{slugify m.Title}/%s{c.Title.Value}")
 
                 {
                     Title = m.Title
@@ -112,7 +115,7 @@ type Application
                     BookmarkChapter = m.BookmarkChapter |> Option.map (fun c -> c.Title.Value)
                     BookmarkPage = m.BookmarkPage |> Option.map (fun p -> p.Name)
                     BookmarkUrl = Some(getBookmarkUrl m)
-                    FirstPageUrl = $"/chapters/%A{firstChapter.Id}/%s{slugify m.Title}/%s{firstChapter.Title.Value}"
+                    FirstPageUrl = firstPageUrl
                 })
 
         let json = jsonSerializer.SerializeToString(manga)
