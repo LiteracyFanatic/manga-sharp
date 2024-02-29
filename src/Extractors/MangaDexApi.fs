@@ -82,7 +82,7 @@ type MangaDexApi(httpFactory: IHttpClientFactory, versionInfo: VersionInfo) =
         let rec loop offset acc =
             taskResult {
                 let apiUrl =
-                    $"https://api.mangadex.org/chapter?manga=%s{mangaId}&translatedLanguage%%5b%%5d=en&includeFutureUpdates=0&limit=100&offset=%i{offset}&order%%5bchapter%%5d=asc"
+                    $"https://api.mangadex.org/chapter?manga=%s{mangaId}&translatedLanguage%%5b%%5d=en&includeFutureUpdates=0&limit=100&offset=%i{offset}&order%%5bchapter%%5d=asc&contentRating%%5b%%5d=safe&contentRating%%5b%%5d=suggestive&contentRating%%5b%%5d=erotica&contentRating%%5b%%5d=pornographic"
 
                 let! res = hc.GetFromJsonAsync<MangaDexChapterResponse>(apiUrl)
 

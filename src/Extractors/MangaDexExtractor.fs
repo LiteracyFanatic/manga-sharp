@@ -20,10 +20,15 @@ type MangaDexExtractor
         mangaRepository: MangaRepository,
         pageSaver: PageSaver,
         mangaDexApi: MangaDexApi,
-        logger: ILogger<MangaDexExtractor>
+        logger: ILogger<MangaDexExtractor>,
+        versionInfo: VersionInfo
     ) =
 
     let hc = httpFactory.CreateClient()
+
+    let userAgent = ProductInfoHeaderValue("MangaSharp", versionInfo.Version)
+
+    do hc.DefaultRequestHeaders.UserAgent.Add(userAgent)
 
     let getIdFromUrl (url: string) =
         regexMatch (Regex("https://mangadex\.org/title/([^/]*)(/.*)?")) url
