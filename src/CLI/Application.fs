@@ -24,6 +24,7 @@ type LsJson = {
     BookmarkPage: string option
     BookmarkUrl: string option
     FirstPageUrl: string option
+    Url: string
 }
 
 type Application
@@ -117,6 +118,7 @@ type Application
                     BookmarkPage = m.BookmarkPage |> Option.ofObj |> Option.map (fun p -> p.Name)
                     BookmarkUrl = Some(getBookmarkUrl m)
                     FirstPageUrl = firstPageUrl
+                    Url = m.Url
                 })
 
         let json = jsonSerializer.SerializeToString(manga)
