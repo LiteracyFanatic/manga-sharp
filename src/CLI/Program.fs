@@ -102,16 +102,16 @@ let read (args: ParseResults<ReadArgs>) =
             | true, None ->
                 db.Manga
                     .AsNoTracking()
-                    .Include("_BookmarkChapter")
-                    .Include("_BookmarkPage")
+                    .Include(fun m -> m.BookmarkChapter)
+                    .Include(fun m -> m.BookmarkPage)
                     .Include(fun m -> m.Chapters)
                     .OrderByDescending(fun m -> m.Accessed)
                     .TryFirst()
             | false, Some title ->
                 db.Manga
                     .AsNoTracking()
-                    .Include("_BookmarkChapter")
-                    .Include("_BookmarkPage")
+                    .Include(fun m -> m.BookmarkChapter)
+                    .Include(fun m -> m.BookmarkPage)
                     .Include(fun m -> m.Chapters)
                     .TryFirst(fun m -> m.Title = title)
             | false, None -> None)

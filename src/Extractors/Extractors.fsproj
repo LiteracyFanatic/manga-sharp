@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 
@@ -22,15 +22,16 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Flurl" Version="3.0.7" />
-    <PackageReference Include="Fsharp.data" Version="6.2.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.9.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.9.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.4" />
+    <PackageReference Include="Flurl" Version="4.0.0" />
+    <PackageReference Include="Fsharp.data" Version="6.3.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.15.1" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.7" />
+    <PackageReference Update="FSharp.Core" Version="8.0.200" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Database\Database.fsproj" />
+    <ProjectReference Include="..\Database\Database.csproj" />
   </ItemGroup>
 
 </Project>

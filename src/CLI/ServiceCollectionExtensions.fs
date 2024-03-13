@@ -41,6 +41,8 @@ module Extensions =
             let serializationOptions =
                 JsonSerializerOptions(WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping)
 
+            serializationOptions.Converters.Add(JsonStringEnumConverter())
+
             JsonFSharpOptions
                 .Default()
                 .WithUnionNamedFields()

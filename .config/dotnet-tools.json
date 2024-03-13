@@ -3,13 +3,13 @@
   "isRoot": true,
   "tools": {
     "dotnet-ef": {
-      "version": "7.0.4",
+      "version": "8.0.3",
       "commands": [
         "dotnet-ef"
       ]
     },
     "fantomas": {
-      "version": "6.0.0-alpha-009",
+      "version": "6.2.3",
       "commands": [
         "fantomas"
       ]

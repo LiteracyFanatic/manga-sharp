@@ -7,7 +7,6 @@ open System.Text.RegularExpressions
 open System.Linq
 open Microsoft.Extensions.Logging
 open MangaSharp.Database
-open MangaSharp.Database.MangaDomain
 open MangaSharp.Extractors.Util
 open FsToolkit.ErrorHandling
 
@@ -29,7 +28,7 @@ type Manwha18CCExtractor
 
             let chapters =
                 chapterUrls
-                |> Seq.map (fun url -> Chapter(Url = url, Title = None, DownloadStatus = NotDownloaded))
+                |> Seq.map (fun url -> Chapter(Url = url, Title = null, DownloadStatus = DownloadStatus.NotDownloaded))
                 |> Seq.toList
 
             let mergedChapters =
@@ -67,7 +66,7 @@ type Manwha18CCExtractor
         taskResult {
             let newChapters =
                 manga.Chapters
-                |> Seq.filter (fun c -> c.DownloadStatus = NotDownloaded)
+                |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.NotDownloaded)
                 |> Seq.toList
 
             for i, newChapter in Seq.indexed newChapters do
@@ -83,8 +82,8 @@ type Manwha18CCExtractor
                 )
 
                 do! downloadChapter newChapter chapterHtml chapterTitle manga.Title newChapter.Url
-                newChapter.Title <- Some chapterTitle
-                newChapter.DownloadStatus <- Downloaded
+                newChapter.Title <- chapterTitle
+                newChapter.DownloadStatus <- DownloadStatus.Downloaded
                 let! _ = db.SaveChangesAsync()
                 ()
         }
@@ -103,7 +102,7 @@ type Manwha18CCExtractor
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
 
-                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = NotDownloaded) then
+                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = DownloadStatus.NotDownloaded) then
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", title)
             }
@@ -116,7 +115,7 @@ type Manwha18CCExtractor
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
 
-                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = NotDownloaded) then
+                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = DownloadStatus.NotDownloaded) then
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", manga.Title)
                     return true

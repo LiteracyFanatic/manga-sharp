@@ -15,7 +15,6 @@ open Microsoft.Extensions.FileProviders
 open Giraffe
 open Giraffe.EndpointRouting
 open MangaSharp.Database
-open MangaSharp.Database.MangaDomain
 open MangaSharp.CLI
 open MangaSharp.CLI.Util
 open Serilog
@@ -34,8 +33,8 @@ module WebApp =
             task {
                 let db = ctx.GetService<MangaContext>()
                 let! manga = db.Manga.SingleAsync(fun m -> m.Id = mangaId)
-                manga.BookmarkChapterId <- Some request.ChapterId
-                manga.BookmarkPageId <- request.PageId
+                manga.BookmarkChapterId <- request.ChapterId
+                manga.BookmarkPageId <- Option.toNullable request.PageId
                 let! _ = db.SaveChangesAsync()
                 return! Successful.NO_CONTENT next ctx
             }
@@ -66,8 +65,8 @@ module WebApp =
 
                 let! manga =
                     db.Manga
-                        .Include("_BookmarkChapter")
-                        .Include("_BookmarkPage")
+                        .Include(fun m -> m.BookmarkChapter)
+                        .Include(fun m -> m.BookmarkPage)
                         .Include(fun m -> m.Chapters)
                         .OrderBy(fun m -> m.Title)
                         .ToListAsync()
@@ -77,11 +76,11 @@ module WebApp =
                     |> Seq.map (fun m ->
                         let chapters =
                             m.Chapters
-                            |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+                            |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
                             |> Seq.sortBy (fun c -> c.Index)
 
                         let chapterIndex =
-                            match m.BookmarkChapterId with
+                            match Option.ofNullable m.BookmarkChapterId with
                             | Some chapterId -> chapters |> Seq.findIndex (fun c -> c.Id = chapterId)
                             | None -> 0
 
@@ -132,27 +131,28 @@ module WebApp =
                     db.Manga
                         .Include(fun manga ->
                             manga.Chapters
-                                .Where(fun chapter -> chapter.Title.IsSome)
+                                .Where(fun chapter -> chapter.Title <> null)
                                 .OrderBy(fun chapter -> chapter.Index)
                             :> IEnumerable<_>)
                         .ThenInclude(fun (chapter: Chapter) -> chapter.Pages.OrderBy(fun page -> page.Name))
                         .AsSplitQuery()
                         .FirstAsync(fun manga -> manga.Chapters.Select(fun c -> c.Id).Contains(chapterId))
 
-                manga.Accessed <- Some DateTime.UtcNow
+                manga.Accessed <- DateTime.UtcNow
                 let! _ = db.SaveChangesAsync()
                 let chapter = manga.Chapters |> Seq.find (fun c -> c.Id = chapterId)
 
                 let getQueryParams (page: Page) =
                     match manga.Direction with
-                    | Horizontal -> $"?page=%s{page.Name}"
-                    | Vertical -> ""
+                    | Direction.Horizontal -> $"?page=%s{page.Name}"
+                    | Direction.Vertical -> ""
+                    | _ -> ArgumentOutOfRangeException() |> raise
 
                 let response = {
                     MangaId = chapter.MangaId
                     Direction = chapter.Manga.Direction
                     ChapterId = chapter.Id
-                    ChapterTitle = chapter.Title
+                    ChapterTitle = Option.ofObj chapter.Title
                     PreviousChapterUrl =
                         tryPreviousChapter manga chapter
                         |> Option.map (fun c ->
@@ -163,7 +163,7 @@ module WebApp =
                                 |> Option.map getQueryParams
                                 |> Option.defaultValue ""
 
-                            $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{queryParams}")
+                            $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title}%s{queryParams}")
                     NextChapterUrl =
                         tryNextChapter manga chapter
                         |> Option.map (fun c ->
@@ -174,13 +174,13 @@ module WebApp =
                                 |> Option.map getQueryParams
                                 |> Option.defaultValue ""
 
-                            $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title.Value}%s{queryParams}")
+                            $"/chapters/%A{c.Id}/%s{slugify manga.Title}/%s{c.Title}%s{queryParams}")
                     OtherChapters =
                         manga.Chapters
                         |> Seq.map (fun chapter -> {|
                             Id = chapter.Id
-                            Title = chapter.Title.Value
-                            Url = $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
+                            Title = chapter.Title
+                            Url = $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}"
                             DownloadStatus = chapter.DownloadStatus
                         |})
                         |> Seq.toArray

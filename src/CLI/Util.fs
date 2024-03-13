@@ -3,7 +3,7 @@ module MangaSharp.CLI.Util
 open System.Text
 open System.Text.RegularExpressions
 open System.Globalization
-open MangaSharp.Database.MangaDomain
+open MangaSharp.Database
 
 let private normalize (form: NormalizationForm) (input: string) = input.Normalize(form)
 
@@ -33,14 +33,14 @@ let getFirstPage (manga: Manga) =
     let chapter =
         manga.Chapters
         |> Seq.sortBy (fun c -> c.Index)
-        |> Seq.find (fun c -> c.DownloadStatus = Downloaded)
+        |> Seq.find (fun c -> c.DownloadStatus = DownloadStatus.Downloaded)
 
-    $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
+    $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}"
 
 let tryPreviousChapter (manga: Manga) (chapter: Chapter) =
     let chapters =
         manga.Chapters
-        |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+        |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
         |> Seq.sortBy (fun c -> c.Index)
 
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
@@ -49,22 +49,22 @@ let tryPreviousChapter (manga: Manga) (chapter: Chapter) =
 let tryNextChapter (manga: Manga) (chapter: Chapter) =
     let chapters =
         manga.Chapters
-        |> Seq.filter (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+        |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
         |> Seq.sortBy (fun c -> c.Index)
 
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
     Seq.tryItem (i + 1) chapters
 
 let getBookmarkUrl (manga: Manga) =
-    match manga.BookmarkChapter, manga.BookmarkPage with
+    match Option.ofObj manga.BookmarkChapter, Option.ofObj manga.BookmarkPage with
     | Some chapter, Some page ->
-        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}?page=%s{page.Name}"
-    | Some chapter, None -> $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
+        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}?page=%s{page.Name}"
+    | Some chapter, None -> $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}"
     | None, None
     | None, Some _ ->
         let chapter =
             manga.Chapters
             |> Seq.sortBy (fun c -> c.Index)
-            |> Seq.find (fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+            |> Seq.find (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
 
-        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title.Value}"
+        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}"

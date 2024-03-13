@@ -1,6 +1,6 @@
 module MangaSharp.CLI.Arguments
 
-open MangaSharp.Database.MangaDomain
+open MangaSharp.Database
 open Argu
 
 type DownloadArgs =

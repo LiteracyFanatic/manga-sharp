@@ -9,7 +9,6 @@ open EntityFrameworkCore.FSharp.DbContextHelpers
 open Argu
 open MangaSharp
 open MangaSharp.Database
-open MangaSharp.Database.MangaDomain
 open MangaSharp.Extractors
 open MangaSharp.Extractors.Util
 open MangaSharp.CLI.Arguments
@@ -57,14 +56,14 @@ type Application
             | Direction d :: t -> loop d acc t
             | Url u :: t -> loop direction ((direction, u) :: acc) t
 
-        loop Horizontal [] args |> List.rev
+        loop Direction.Horizontal [] args |> List.rev
 
     let lsPlain () =
         let manga =
             db.Manga
                 .AsNoTracking()
-                .Include("_BookmarkChapter")
-                .Include("_BookmarkPage")
+                .Include(fun m -> m.BookmarkChapter)
+                .Include(fun m -> m.BookmarkPage)
                 .Include(fun m -> m.Chapters)
                 .OrderBy(fun m -> m.Title)
                 .ToList()
@@ -74,24 +73,26 @@ type Application
         |> List.iter (fun m ->
             let bookmarkText =
                 m.BookmarkChapter
+                |> Option.ofObj
                 |> Option.map (fun c ->
                     let pageText =
                         m.BookmarkPage
+                        |> Option.ofObj
                         |> Option.map (fun p -> sprintf " Page %s" p.Name)
                         |> Option.defaultValue ""
 
-                    $"Chapter %s{c.Title.Value}%s{pageText}")
+                    $"Chapter %s{c.Title}%s{pageText}")
                 |> Option.defaultValue "None"
 
-            let chapterCount = m.Chapters.Where(fun c -> c.DownloadStatus = Downloaded).Count()
+            let chapterCount = m.Chapters.Where(fun c -> c.DownloadStatus = DownloadStatus.Downloaded).Count()
             printfn $"%s{m.Title},%A{m.Direction},%i{chapterCount},%s{bookmarkText}")
 
     let lsJson () =
         let manga =
             db.Manga
                 .AsNoTracking()
-                .Include("_BookmarkChapter")
-                .Include("_BookmarkPage")
+                .Include(fun m -> m.BookmarkChapter)
+                .Include(fun m -> m.BookmarkPage)
                 .Include(fun m -> m.Chapters)
                 .OrderBy(fun m -> m.Title)
                 .ToList()
@@ -99,21 +100,21 @@ type Application
             |> List.map (fun m ->
                 let chapters =
                     m.Chapters
-                        .Where(fun c -> c.DownloadStatus = Downloaded || c.DownloadStatus = Archived)
+                        .Where(fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
                         .OrderBy(fun c -> c.Index)
                         .ToList()
 
                 let firstPageUrl =
                     chapters
                     |> Seq.tryHead
-                    |> Option.map (fun c -> $"/chapters/%A{c.Id}/%s{slugify m.Title}/%s{c.Title.Value}")
+                    |> Option.map (fun c -> $"/chapters/%A{c.Id}/%s{slugify m.Title}/%s{c.Title}")
 
                 {
                     Title = m.Title
                     Direction = m.Direction
                     NumberOfChapters = Seq.length chapters
-                    BookmarkChapter = m.BookmarkChapter |> Option.map (fun c -> c.Title.Value)
-                    BookmarkPage = m.BookmarkPage |> Option.map (fun p -> p.Name)
+                    BookmarkChapter = m.BookmarkChapter |> Option.ofObj |> Option.map (fun c -> c.Title)
+                    BookmarkPage = m.BookmarkPage |> Option.ofObj |> Option.map (fun p -> p.Name)
                     BookmarkUrl = Some(getBookmarkUrl m)
                     FirstPageUrl = firstPageUrl
                 })
@@ -153,7 +154,7 @@ type Application
         match chapterTitle with
         | None -> Some defaultChapter
         | Some chapterTitle ->
-            match manga.Chapters |> Seq.tryFind (fun c -> c.Title = Some chapterTitle) with
+            match manga.Chapters |> Seq.tryFind (fun c -> c.Title = chapterTitle) with
             | None ->
                 logger.LogError("Could not find a chapter with title {ChapterTitle}.", chapterTitle)
                 None
@@ -178,8 +179,8 @@ type Application
         else
             for chapter in chapters do
                 // Leave chapters with other statuses the same so that we don't try to access null titles in other parts of the code
-                if chapter.DownloadStatus = Downloaded then
-                    chapter.DownloadStatus <- Archived
+                if chapter.DownloadStatus = DownloadStatus.Downloaded then
+                    chapter.DownloadStatus <- DownloadStatus.Archived
 
                 chapter.Pages.Clear()
 
@@ -188,7 +189,7 @@ type Application
             let mangaDir = getDirForMangaSafe manga
 
             for chapter in chapters do
-                match chapter.Title with
+                match Option.ofObj chapter.Title with
                 | Some chapterTitle ->
                     let dir = Path.Combine(mangaDir, chapterTitle)
 
@@ -230,8 +231,8 @@ type Application
             logger.LogError("No matching chapters found for {Title}.", manga.Title)
         else
             for chapter in chapters do
-                if chapter.DownloadStatus = Archived then
-                    chapter.DownloadStatus <- NotDownloaded
+                if chapter.DownloadStatus = DownloadStatus.Archived then
+                    chapter.DownloadStatus <- DownloadStatus.NotDownloaded
 
             db.SaveChanges() |> ignore
             logger.LogInformation("Marked matching chapters for {Title} as not downloaded in database.", manga.Title)

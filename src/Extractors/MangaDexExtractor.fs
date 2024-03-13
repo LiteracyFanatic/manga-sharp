@@ -4,11 +4,12 @@ open System
 open System.Diagnostics
 open System.IO
 open System.Net.Http
+open System.Net.Http.Headers
 open System.Text.RegularExpressions
 open System.Linq
+open MangaSharp
 open Microsoft.Extensions.Logging
 open MangaSharp.Database
-open MangaSharp.Database.MangaDomain
 open MangaSharp.Extractors.MangaDex
 open MangaSharp.Extractors.Util
 open FsToolkit.ErrorHandling
@@ -45,14 +46,14 @@ type MangaDexExtractor
 
                     let title =
                         if chapterNumbersResetOnNewVolume then
-                            Some $"%s{c.attributes.volume.Value}.%s{chapterName}"
+                            $"%s{c.attributes.volume.Value}.%s{chapterName}"
                         else
-                            Some chapterName
+                            chapterName
 
                     Chapter(
                         Url = $"https://mangadex.org/chapter/%s{c.id}",
                         Title = title,
-                        DownloadStatus = NotDownloaded
+                        DownloadStatus = DownloadStatus.NotDownloaded
                     ))
                 |> Seq.toList
 
@@ -132,12 +133,12 @@ type MangaDexExtractor
         taskResult {
             let newChapters =
                 manga.Chapters
-                |> Seq.filter (fun c -> c.DownloadStatus = NotDownloaded)
+                |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.NotDownloaded)
                 |> Seq.toList
 
             for i, newChapter in Seq.indexed newChapters do
                 let! chapterId = regexMatch (Regex("https://mangadex.org/chapter/(.*)")) newChapter.Url
-                let chapterTitle = newChapter.Title.Value
+                let chapterTitle = newChapter.Title
 
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
@@ -148,7 +149,7 @@ type MangaDexExtractor
                 )
 
                 do! downloadChapter newChapter chapterTitle chapterId manga.Title
-                newChapter.DownloadStatus <- Downloaded
+                newChapter.DownloadStatus <- DownloadStatus.Downloaded
                 let! _ = db.SaveChangesAsync()
                 ()
         }
@@ -176,7 +177,7 @@ type MangaDexExtractor
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
 
-                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = NotDownloaded) then
+                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = DownloadStatus.NotDownloaded) then
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", title)
             }
@@ -190,7 +191,7 @@ type MangaDexExtractor
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
 
-                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = NotDownloaded) then
+                if manga.Chapters.Exists(fun chapter -> chapter.DownloadStatus = DownloadStatus.NotDownloaded) then
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", manga.Title)
                     return true

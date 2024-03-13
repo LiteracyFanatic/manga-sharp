@@ -2,7 +2,7 @@ namespace MangaSharp.Extractors
 
 open System
 open System.Threading.Tasks
-open MangaSharp.Database.MangaDomain
+open MangaSharp.Database
 
 type IMangaExtractor =
     abstract IsMatch: url: string -> bool

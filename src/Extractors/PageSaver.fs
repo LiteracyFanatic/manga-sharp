@@ -5,7 +5,7 @@ open Microsoft.Extensions.Logging
 open SixLabors.ImageSharp
 open SixLabors.ImageSharp.Processing
 open MangaSharp.Extractors.Util
-open MangaSharp.Database.MangaDomain
+open MangaSharp.Database
 
 module private PageSaver =
 
