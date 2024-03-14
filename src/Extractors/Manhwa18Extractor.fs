@@ -78,7 +78,7 @@ type Manwha18Extractor
 
             for i, newChapter in Seq.indexed newChapters do
                 let! chapterHtml = HtmlDocument.tryLoadAsync hc newChapter.Url
-                let! chapterTitle = regexMatch (Regex("(?:ch|chap|chapter)-(\d+)")) newChapter.Url
+                let! chapterTitle = regexMatch (Regex("(?:ch|chp|chap|chapter)-(\d+)")) newChapter.Url
 
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
