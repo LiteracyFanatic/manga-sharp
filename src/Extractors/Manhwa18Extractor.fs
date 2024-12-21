@@ -4,7 +4,6 @@ open System
 open System.Globalization
 open FSharp.Data
 open System.Net.Http
-open System.Net.Http.Headers
 open System.Text.RegularExpressions
 open System.Linq
 open Microsoft.Extensions.Logging

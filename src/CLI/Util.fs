@@ -40,7 +40,9 @@ let getFirstPage (manga: Manga) =
 let tryPreviousChapter (manga: Manga) (chapter: Chapter) =
     let chapters =
         manga.Chapters
-        |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
+        |> Seq.filter (fun c ->
+            c.DownloadStatus = DownloadStatus.Downloaded
+            || c.DownloadStatus = DownloadStatus.Archived)
         |> Seq.sortBy (fun c -> c.Index)
 
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
@@ -49,7 +51,9 @@ let tryPreviousChapter (manga: Manga) (chapter: Chapter) =
 let tryNextChapter (manga: Manga) (chapter: Chapter) =
     let chapters =
         manga.Chapters
-        |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
+        |> Seq.filter (fun c ->
+            c.DownloadStatus = DownloadStatus.Downloaded
+            || c.DownloadStatus = DownloadStatus.Archived)
         |> Seq.sortBy (fun c -> c.Index)
 
     let i = chapters |> Seq.findIndex (fun c -> c.Id = chapter.Id)
@@ -65,6 +69,8 @@ let getBookmarkUrl (manga: Manga) =
         let chapter =
             manga.Chapters
             |> Seq.sortBy (fun c -> c.Index)
-            |> Seq.find (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
+            |> Seq.find (fun c ->
+                c.DownloadStatus = DownloadStatus.Downloaded
+                || c.DownloadStatus = DownloadStatus.Archived)
 
         $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}"

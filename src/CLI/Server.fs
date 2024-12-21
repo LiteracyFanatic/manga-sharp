@@ -77,7 +77,9 @@ module WebApp =
                     |> Seq.map (fun m ->
                         let chapters =
                             m.Chapters
-                            |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
+                            |> Seq.filter (fun c ->
+                                c.DownloadStatus = DownloadStatus.Downloaded
+                                || c.DownloadStatus = DownloadStatus.Archived)
                             |> Seq.sortBy (fun c -> c.Index)
 
                         let chapterIndex =
@@ -85,10 +87,7 @@ module WebApp =
                             | Some chapterId -> chapters |> Seq.findIndex (fun c -> c.Id = chapterId)
                             | None -> 0
 
-                        let updated =
-                            m.Chapters
-                            |> Seq.map (fun c -> c.Created)
-                            |> Seq.max
+                        let updated = m.Chapters |> Seq.map (fun c -> c.Created) |> Seq.max
 
                         {
                             Id = m.Id
@@ -253,6 +252,7 @@ module WebApp =
 
         hostBuilder.UseSerilog(fun _ config ->
             config.Enrich.FromLogContext()
+
             config.WriteTo.Console(
                 outputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"
             )

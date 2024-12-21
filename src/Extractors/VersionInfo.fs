@@ -1,5 +1,3 @@
 namespace MangaSharp
 
-type VersionInfo = {
-    Version: string
-}
+type VersionInfo = { Version: string }

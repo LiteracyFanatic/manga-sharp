@@ -30,6 +30,7 @@ type ManyToonExtractor
             let! htmlContent = response.Content.ReadAsStringAsync()
             let htmlContent = $"<html><head></head><body>%s{htmlContent}</body></html>"
             let! htmlDoc = HtmlDocument.tryParse htmlContent |> Result.mapError ParseError
+
             let! chapters =
                 querySelectorAll htmlDoc ".wp-manga-chapter a"
                 |> Result.mapError QuerySelectorAllError

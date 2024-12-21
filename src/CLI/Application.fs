@@ -85,7 +85,9 @@ type Application
                     $"Chapter %s{c.Title}%s{pageText}")
                 |> Option.defaultValue "None"
 
-            let chapterCount = m.Chapters.Where(fun c -> c.DownloadStatus = DownloadStatus.Downloaded).Count()
+            let chapterCount =
+                m.Chapters.Where(fun c -> c.DownloadStatus = DownloadStatus.Downloaded).Count()
+
             printfn $"%s{m.Title},%A{m.Direction},%i{chapterCount},%s{bookmarkText}")
 
     let lsJson () =
@@ -101,7 +103,9 @@ type Application
             |> List.map (fun m ->
                 let chapters =
                     m.Chapters
-                        .Where(fun c -> c.DownloadStatus = DownloadStatus.Downloaded || c.DownloadStatus = DownloadStatus.Archived)
+                        .Where(fun c ->
+                            c.DownloadStatus = DownloadStatus.Downloaded
+                            || c.DownloadStatus = DownloadStatus.Archived)
                         .OrderBy(fun c -> c.Index)
                         .ToList()
 
@@ -272,8 +276,7 @@ type Application
 
                 match res with
                 | Ok _ -> ()
-                | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e)
-            )
+                | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e))
         | Error u ->
             logger.LogError("Could not find a provider for the following URLs: {Urls}", u)
             exit 1
@@ -339,6 +342,7 @@ type Application
                     match res with
                     | Ok _ -> ()
                     | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e)
+
                     res
                 | None ->
                     logger.LogError("Could not find a provider for the following URL: {Url}", m.Url)
