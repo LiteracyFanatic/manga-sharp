@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>MangaSharp.Database</RootNamespace>
+        <DebugType>embedded</DebugType>
     </PropertyGroup>
 
     <ItemGroup>

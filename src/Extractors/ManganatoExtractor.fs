@@ -64,9 +64,13 @@ type ManganatoExtractor
                 |> Result.eitherMap (List.map (HtmlNode.attributeValue "src")) QuerySelectorAllError
 
             for i, img in List.indexed imgs do
-                use! imageStream = hc.GetStreamAsync(img)
-                let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
-                newChapter.Pages.Add(newPage)
+                try
+                    use! imageStream = hc.GetStreamAsync(img)
+                    let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
+                    newChapter.Pages.Add(newPage)
+                with
+                | :? HttpRequestException as e ->
+                    logger.LogError(e, "Failed to download image {ImageUrl}", img)
         }
 
     let downloadChapters (manga: Manga) : TaskResult<unit, CommonError> =
