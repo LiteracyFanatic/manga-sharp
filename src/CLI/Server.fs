@@ -253,7 +253,9 @@ module WebApp =
 
         hostBuilder.UseSerilog(fun _ config ->
             config.Enrich.FromLogContext()
-            config.WriteTo.Console()
+            config.WriteTo.Console(
+                outputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"
+            )
             // Disable default ASP.NET Core logging because we are using SerilogRequestLogging instead
             config.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
             |> ignore)
