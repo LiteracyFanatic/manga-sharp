@@ -272,9 +272,8 @@ type Application
 
                 match res with
                 | Ok _ -> ()
-                | Error e ->
-                    logger.LogError(e)
-                    exit 1)
+                | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e)
+            )
         | Error u ->
             logger.LogError("Could not find a provider for the following URLs: {Urls}", u)
             exit 1
@@ -334,7 +333,13 @@ type Application
                 logger.LogInformation("Checking {Title} for updates", m.Title)
 
                 match extractors |> Seq.tryFind (fun extractor -> extractor.IsMatch(m.Url)) with
-                | Some extractor -> extractor.UpdateAsync(m.Id) |> Async.AwaitTask |> Async.RunSynchronously
+                | Some extractor ->
+                    let res = extractor.UpdateAsync(m.Id) |> Async.AwaitTask |> Async.RunSynchronously
+
+                    match res with
+                    | Ok _ -> ()
+                    | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e)
+                    res
                 | None ->
                     logger.LogError("Could not find a provider for the following URL: {Url}", m.Url)
                     exit 1)
