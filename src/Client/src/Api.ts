@@ -1,28 +1,21 @@
-import axios, { AxiosError } from "axios";
 import useSWR, { SWRConfiguration, SWRResponse } from "swr";
+import * as z from "zod";
 
-export type Direction =
-    | "Horizontal"
-    | "Vertical"
+const directionSchema = z.enum(["Horizontal", "Vertical"]);
+export type Direction = z.infer<typeof directionSchema>;
 
-export interface MangaGetResponse {
-    Id: string
-    Title: string
-    BookmarkUrl: string
-    NumberOfChapters: number
-    ChapterIndex: number
-    Direction: Direction
-    SourceUrl: string
-}
+const mangaGetResponseSchema = z.object({
+    Id: z.string(),
+    Title: z.string(),
+    BookmarkUrl: z.string(),
+    NumberOfChapters: z.number(),
+    ChapterIndex: z.number(),
+    Direction: directionSchema,
+    SourceUrl: z.string().url(),
+    Updated: z.coerce.date(),
+});
 
-async function getManga() {
-    const res = await axios.get<MangaGetResponse[]>("/api/manga");
-    return res.data;
-}
-
-export function useManga(config?: SWRConfiguration): SWRResponse<MangaGetResponse[], AxiosError> {
-    return useSWR(["useManga"], getManga, config);
-}
+export type MangaGetResponse = z.infer<typeof mangaGetResponseSchema>;
 
 type DownloadStatus =
     | "NotDownloaded"
@@ -52,21 +45,50 @@ export interface ChapterGetResponse {
     }[]
 }
 
-async function getChapter(chapterId: string) {
-    const res = await axios.get<ChapterGetResponse>(`/api/chapters/${chapterId}`);
-    return res.data;
-}
-
-export function useChapter(chapterId: string, config?: SWRConfiguration): SWRResponse<ChapterGetResponse, AxiosError> {
-    return useSWR(["useChapter", chapterId], () => getChapter(chapterId), config);
-}
-
 export interface PutBookmarkRequest {
     ChapterId: string
     PageId: string | null
 }
 
-export async function setBookmark(mangaId: string, request: PutBookmarkRequest) {
-    const res = await axios.put(`/api/manga/${mangaId}/bookmark`, request);
-    return res.data;
+export function useApi() {
+    async function getManga() {
+        const res = await fetch("/api/manga");
+        try {
+            return mangaGetResponseSchema.array().parse(await res.json());
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
+    }
+
+    async function getChapter(chapterId: string) {
+        const res = await fetch(`/api/chapters/${chapterId}`);
+        return await res.json() as Promise<ChapterGetResponse>;
+    }
+
+    async function setBookmark(mangaId: string, request: PutBookmarkRequest) {
+        await fetch(`/api/manga/${mangaId}/bookmark`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+    }
+
+    return {
+        getManga,
+        getChapter,
+        setBookmark
+    };
+}
+
+export function useManga(config?: SWRConfiguration): SWRResponse<MangaGetResponse[], Error> {
+    const { getManga } = useApi();
+    return useSWR(["useManga"], getManga, config);
+}
+
+export function useChapter(chapterId: string, config?: SWRConfiguration): SWRResponse<ChapterGetResponse, Error> {
+    const { getChapter } = useApi();
+    return useSWR(["useChapter", chapterId], () => getChapter(chapterId), config);
 }

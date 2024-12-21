@@ -36,7 +36,11 @@ export default function ReadingPageAppBar(props: ReadingPageAppBarProps) {
                 }}
                 elevation={isLarge ? 0 : undefined}
             >
-                <Toolbar>
+                <Toolbar
+                    sx={{
+                        justifyContent: "space-between"
+                    }}
+                >
                     <Stack
                         direction="row"
                         gap={1}
@@ -84,4 +88,3 @@ export default function ReadingPageAppBar(props: ReadingPageAppBarProps) {
         </HideOnScroll>
     );
 }
-

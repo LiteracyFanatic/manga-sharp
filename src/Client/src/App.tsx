@@ -9,6 +9,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import Index from "./pages/Index";
 import ReadingPage from "./pages/ReadingPage";
+import { QueryParamProvider } from "use-query-params";
+import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6';
 
 const AppRoutes = () => {
     return (
@@ -28,13 +30,21 @@ const theme = createTheme({
     }
 });
 
-export default function App() {
+function App() {
+    return (
+        <BrowserRouter>
+            <QueryParamProvider adapter={ReactRouter6Adapter}>
+                <AppRoutes />
+            </QueryParamProvider>
+        </BrowserRouter>
+    );
+}
+
+export default function AppWithAuth() {
     return (
         <ThemeProvider theme={theme}>
             <CssBaseLine />
-            <BrowserRouter>
-                <AppRoutes />
-            </BrowserRouter>
+            <App />
         </ThemeProvider>
     );
 }

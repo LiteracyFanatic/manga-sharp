@@ -12,7 +12,6 @@ import {
     SxProps,
     Theme
 } from "@mui/material";
-import fuzzysort from "fuzzysort";
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -25,7 +24,7 @@ interface MangaListItemProps {
 function MangaListItem(props: MangaListItemProps) {
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
-    const highlightedTitle = fuzzysort.highlight(props.manga[0], (m, i) => (
+    const highlightedTitle = props.manga[0].highlight((m, i) => (
         <Box
             key={i}
             component="span"
@@ -40,7 +39,7 @@ function MangaListItem(props: MangaListItemProps) {
     ));
     const title = highlightedTitle?.length ? highlightedTitle : props.manga.obj.Title;
 
-    const secondaryText = `(${props.manga.obj.ChapterIndex + 1}/${props.manga.obj.NumberOfChapters}) ${props.manga.obj.Direction}`;
+    const secondaryText = `(${props.manga.obj.ChapterIndex + 1}/${props.manga.obj.NumberOfChapters}) ${props.manga.obj.Direction} ${props.manga.obj.Updated.toLocaleDateString()}`;
 
     return (
         <Box>
@@ -83,7 +82,7 @@ function MangaListItem(props: MangaListItemProps) {
 }
 
 interface MangaListProps {
-    manga: Fuzzysort.KeysResults<MangaGetResponse>
+    manga: Fuzzysort.KeysResult<MangaGetResponse>[]
     sx?: SxProps<Theme>
 }
 

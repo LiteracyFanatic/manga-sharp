@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useKey } from "react-use";
 
-import { ChapterGetResponse, setBookmark, useChapter } from "../Api";
+import { ChapterGetResponse, useApi, useChapter } from "../Api";
 import ReadingPageAppBar from "../components/ReadingPageAppBar";
 import ReadingPageOverlay from "../components/ReadingPageOverlay";
 import ReadingPageStepper from "../components/ReadingPageStepper";
@@ -15,6 +15,7 @@ export default function ReadingPage() {
     const [pageName, setPageName] = useSearchParam("page");
     const [innerHeight, setInnerHeight] = useState(window.innerHeight);
     const navigate = useNavigate();
+    const { setBookmark } = useApi();
 
     const chapter = useChapter(chapterId || "");
     const currentPageIndex = chapter.data ? chapter.data.Pages.findIndex(page => page.Name === pageName) : -1;

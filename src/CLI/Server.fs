@@ -56,6 +56,7 @@ module WebApp =
         ChapterIndex: int
         Direction: Direction
         SourceUrl: string
+        Updated: DateTime
     }
 
     let getMangaHandler: HttpHandler =
@@ -84,6 +85,11 @@ module WebApp =
                             | Some chapterId -> chapters |> Seq.findIndex (fun c -> c.Id = chapterId)
                             | None -> 0
 
+                        let updated =
+                            m.Chapters
+                            |> Seq.map (fun c -> c.Created)
+                            |> Seq.max
+
                         {
                             Id = m.Id
                             Title = m.Title
@@ -92,6 +98,7 @@ module WebApp =
                             ChapterIndex = chapterIndex
                             Direction = m.Direction
                             SourceUrl = m.Url
+                            Updated = updated
                         })
 
                 return! json response next ctx

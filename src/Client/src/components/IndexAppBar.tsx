@@ -1,34 +1,64 @@
-import { Close, Search } from "@mui/icons-material";
+import { Close, Search, Sort } from "@mui/icons-material";
 import {
     alpha,
     AppBar,
     Box,
     IconButton,
     InputBase,
+    MenuItem,
+    TextField,
     Toolbar
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useDebounce } from "react-use";
 
-interface IndexAppBarProps {
-    defaultValue?: string
-    onChange?: (value: string) => void
+import { MangaGetResponse } from "../Api";
+
+export type SortByKey = Extract<keyof MangaGetResponse, "Title" | "Updated">;
+
+export type SortDirection = "asc" | "desc";
+
+export interface SortBy {
+    key: SortByKey
+    direction: SortDirection
 }
 
+interface IndexAppBarProps {
+    defaultSearchValue?: string
+    onSearchValueChange?: (value: string) => void
+    defaultSortBy?: SortBy
+    onSortByChange?: (value: SortBy) => void
+}
+
+const sortByOptions = [
+    { key: "Title", direction: "asc" },
+    { key: "Title", direction: "desc" },
+    { key: "Updated", direction: "asc" },
+    { key: "Updated", direction: "desc" }
+] as const;
+
 export default function IndexAppBar(props: IndexAppBarProps) {
-    const [searchText, setSearchText] = useState(props.defaultValue || "");
+    const [searchText, setSearchText] = useState(props.defaultSearchValue || "");
     const [searchTextDebounced, setSearchTextDebounced] = useState(searchText);
     useDebounce(
         () => setSearchTextDebounced(searchText),
         500,
         [searchText]
     );
+    const [selectedSortByIndex, setSelectedSortByIndex] = useState(sortByOptions.findIndex(v => v.key === props.defaultSortBy?.key && v.direction === props.defaultSortBy?.direction));
+    const selectedSortBy = sortByOptions[selectedSortByIndex];
 
     useEffect(() => {
-        if (props.onChange) {
-            props.onChange(searchTextDebounced);
+        if (props.onSearchValueChange) {
+            props.onSearchValueChange(searchTextDebounced);
         }
     }, [searchTextDebounced]);
+
+    useEffect(() => {
+        if (props.onSortByChange) {
+            props.onSortByChange(selectedSortBy);
+        }
+    }, [selectedSortBy]);
 
     function onChangeSearchText(value: string) {
         setSearchText(value);
@@ -47,49 +77,86 @@ export default function IndexAppBar(props: IndexAppBarProps) {
             <AppBar>
                 <Toolbar
                     sx={{
-                        justifyContent: "end"
+                        justifyContent: "space-between"
                     }}
                 >
                     <Box
-                        sx={theme => ({
+                        sx={{
                             display: "flex",
-                            borderRadius: 1,
-                            backgroundColor: alpha(theme.palette.common.white, 0.15),
-                            "&:hover": {
-                                backgroundColor: alpha(theme.palette.common.white, 0.25)
-                            },
+                            justifyContent: "center",
+                            alignItems: "center",
                             width: "100%",
-                            [theme.breakpoints.up("sm")]: {
-                                marginLeft: theme.spacing(3),
-                                width: "auto"
-                            }
-                        })}
+                            gap: 1
+                        }}
                     >
                         <Box
-                            sx={{
+                            sx={theme => ({
                                 display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                padding: 1
-                            }}
+                                borderRadius: 1,
+                                backgroundColor: alpha(theme.palette.common.white, 0.15),
+                                "&:hover": {
+                                    backgroundColor: alpha(theme.palette.common.white, 0.25)
+                                },
+                                width: "100%",
+                                [theme.breakpoints.up("sm")]: {
+                                    marginLeft: theme.spacing(3),
+                                    width: "auto"
+                                }
+                            })}
                         >
-                            <Search />
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    padding: 1
+                                }}
+                            >
+                                <Search />
+                            </Box>
+                            <InputBase
+                                value={searchText}
+                                onChange={e => onChangeSearchText(e.target.value)}
+                                sx={{
+                                    marginLeft: 1,
+                                    flexGrow: 1
+                                }}
+                                placeholder="Search"
+                            />
+                            <IconButton
+                                onClick={onClickClear}
+                                disabled={!searchText}
+                            >
+                                <Close />
+                            </IconButton>
                         </Box>
-                        <InputBase
-                            value={searchText}
-                            onChange={e => onChangeSearchText(e.target.value)}
-                            sx={{
-                                marginLeft: 1,
-                                flexGrow: 1
+                        <TextField
+                            size="small"
+                            select
+                            value={selectedSortByIndex}
+                            onChange={e => setSelectedSortByIndex(parseInt(e.target.value))}
+                            InputProps={{
+                                startAdornment: <Sort
+                                    sx={{
+                                        marginRight: 2
+                                    }}
+                                />
                             }}
-                            placeholder="Search"
-                        />
-                        <IconButton
-                            onClick={onClickClear}
-                            disabled={!searchText}
+                            sx={theme => ({
+                                width: "100%",
+                                [theme.breakpoints.up("sm")]: {
+                                    width: "auto"
+                                }
+                            })}
                         >
-                            <Close />
-                        </IconButton>
+                            {sortByOptions.map((v, i) => (
+                                <MenuItem
+                                    key={i}
+                                    value={i}
+                                >
+                                    {v.key} ({v.direction === "asc" ? "Ascending" : "Descending"})
+                                </MenuItem>))}
+                        </TextField>
                     </Box>
                 </Toolbar>
             </AppBar>
@@ -97,4 +164,3 @@ export default function IndexAppBar(props: IndexAppBarProps) {
         </Box>
     );
 }
-
