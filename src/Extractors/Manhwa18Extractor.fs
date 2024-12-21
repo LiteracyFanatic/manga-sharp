@@ -28,9 +28,11 @@ type Manwha18Extractor
 
     do hc.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent)
 
-    let getChaptersAsync (html: HtmlDocument) (manga: Manga) =
+    let getChaptersAsync (html: HtmlDocument) (manga: Manga) : TaskResult<ResizeArray<Chapter>, CommonError> =
         taskResult {
-            let! chapterLinks = querySelectorAll html ".list-chapters a"
+            let! chapterLinks =
+                querySelectorAll html ".list-chapters a"
+                |> Result.mapError QuerySelectorAllError
 
             let chapterUrls =
                 chapterLinks
@@ -58,9 +60,17 @@ type Manwha18Extractor
             return mergedChapters
         }
 
-    let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) =
+    let downloadChapter
+        (newChapter: Chapter)
+        (chapterHtml: HtmlDocument)
+        (chapterTitle: string)
+        (mangaTitle: string)
+        : TaskResult<unit, CommonError> =
         taskResult {
-            let! nodes = querySelectorAll chapterHtml "#chapter-content img"
+            let! nodes =
+                querySelectorAll chapterHtml "#chapter-content img"
+                |> Result.mapError QuerySelectorAllError
+
             let imgs = nodes |> Seq.map (HtmlNode.attributeValue "data-src")
 
             for i, img in Seq.indexed imgs do
@@ -69,7 +79,7 @@ type Manwha18Extractor
                 newChapter.Pages.Add(newPage)
         }
 
-    let downloadChapters (manga: Manga) =
+    let downloadChapters (manga: Manga) : TaskResult<unit, CommonError> =
         taskResult {
             let newChapters =
                 manga.Chapters
@@ -77,8 +87,13 @@ type Manwha18Extractor
                 |> Seq.toList
 
             for i, newChapter in Seq.indexed newChapters do
-                let! chapterHtml = HtmlDocument.tryLoadAsync hc newChapter.Url
-                let! chapterTitle = regexMatch (Regex("(?:ch|chp|chap|chapter)-(\d+)")) newChapter.Url
+                let! chapterHtml =
+                    HtmlDocument.tryLoadAsync hc newChapter.Url
+                    |> TaskResult.mapError TryLoadAsyncError
+
+                let! chapterTitle =
+                    regexMatch (Regex("(?:ch|chp|chap|chapter)-(\d+)")) newChapter.Url
+                    |> Result.mapError RegexMatchError
 
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
@@ -102,9 +117,9 @@ type Manwha18Extractor
 
         member this.DownloadAsync(url: string, direction: Direction) =
             taskResult {
-                let! html = HtmlDocument.tryLoadAsync hc url
+                let! html = HtmlDocument.tryLoadAsync hc url |> TaskResult.mapError TryLoadAsyncError
                 let textInfo = CultureInfo("en-US", false).TextInfo
-                let! node = querySelector html ".series-name a"
+                let! node = querySelector html ".series-name a" |> Result.mapError QuerySelectorError
 
                 let title =
                     node
@@ -121,11 +136,13 @@ type Manwha18Extractor
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", title)
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)
 
         member this.UpdateAsync(mangaId: Guid) =
             taskResult {
                 let! manga = mangaRepository.GetByIdAsync(mangaId)
-                let! html = HtmlDocument.tryLoadAsync hc manga.Url
+                let! html = HtmlDocument.tryLoadAsync hc manga.Url |> CommonError.FromTaskResult
                 let! chapters = getChaptersAsync html manga
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
@@ -137,3 +154,5 @@ type Manwha18Extractor
                 else
                     return false
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)

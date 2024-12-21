@@ -29,8 +29,10 @@ type ManyToonExtractor
             response.EnsureSuccessStatusCode() |> ignore
             let! htmlContent = response.Content.ReadAsStringAsync()
             let htmlContent = $"<html><head></head><body>%s{htmlContent}</body></html>"
-            let! htmlDoc = HtmlDocument.tryParse htmlContent
-            let! chapters = querySelectorAll htmlDoc ".wp-manga-chapter a"
+            let! htmlDoc = HtmlDocument.tryParse htmlContent |> Result.mapError ParseError
+            let! chapters =
+                querySelectorAll htmlDoc ".wp-manga-chapter a"
+                |> Result.mapError QuerySelectorAllError
 
             let chapterUrls =
                 chapters |> Seq.rev |> Seq.map (HtmlNode.attributeValue "href") |> Seq.distinct
@@ -63,7 +65,9 @@ type ManyToonExtractor
         (chapterUrl: string)
         =
         taskResult {
-            let! nodes = querySelectorAll chapterHtml ".wp-manga-chapter-img"
+            let! nodes =
+                querySelectorAll chapterHtml ".wp-manga-chapter-img"
+                |> Result.mapError QuerySelectorAllError
             // Remove duplicates and data URLs
             let imgs =
                 nodes
@@ -81,7 +85,7 @@ type ManyToonExtractor
                 newChapter.Pages.Add(newPage)
         }
 
-    let downloadChapters (manga: Manga) =
+    let downloadChapters (manga: Manga) : TaskResult<unit, CommonError> =
         taskResult {
             let newChapters =
                 manga.Chapters
@@ -89,8 +93,15 @@ type ManyToonExtractor
                 |> Seq.toList
 
             for i, newChapter in Seq.indexed newChapters do
-                let! chapterHtml = HtmlDocument.tryLoadAsync hc newChapter.Url
-                let! chapterTitle = regexMatch (Regex("chapter-(\d+(-\d+)*)")) newChapter.Url
+                let! (chapterHtml: HtmlDocument) =
+                    newChapter.Url
+                    |> HtmlDocument.tryLoadAsync hc
+                    |> TaskResult.mapError CommonError.TryLoadAsyncError
+
+                let! (chapterTitle: string) =
+                    newChapter.Url
+                    |> regexMatch (Regex("chapter-(\d+(-\d+)*)"))
+                    |> Result.mapError CommonError.RegexMatchError
 
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
@@ -105,6 +116,8 @@ type ManyToonExtractor
                 newChapter.DownloadStatus <- DownloadStatus.Downloaded
                 let! _ = db.SaveChangesAsync()
                 ()
+
+            return ()
         }
 
     interface IMangaExtractor with
@@ -114,8 +127,12 @@ type ManyToonExtractor
 
         member this.DownloadAsync(url: string, direction: Direction) =
             taskResult {
-                let! html = HtmlDocument.tryLoadAsync hc url
-                let! title = cssAndRegex ".post-title h1" (Regex("(.*)")) html
+                let! html = HtmlDocument.tryLoadAsync hc url |> TaskResult.mapError TryLoadAsyncError
+
+                let! title =
+                    querySelector html ".post-title h1"
+                    |> Result.eitherMap (_.DirectInnerText().Trim()) QuerySelectorError
+
                 let! manga = mangaRepository.GetOrCreateAsync(title, direction, url)
                 let! chapters = getChaptersAsync url manga
                 manga.Chapters <- chapters
@@ -125,6 +142,8 @@ type ManyToonExtractor
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", title)
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)
 
         member this.UpdateAsync(mangaId: Guid) =
             taskResult {
@@ -140,3 +159,5 @@ type ManyToonExtractor
                 else
                     return false
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)

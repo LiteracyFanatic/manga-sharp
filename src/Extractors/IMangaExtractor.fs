@@ -1,10 +1,11 @@
 namespace MangaSharp.Extractors
 
 open System
-open System.Threading.Tasks
+open FsToolkit.ErrorHandling
 open MangaSharp.Database
+open MangaSharp.Extractors.Util
 
 type IMangaExtractor =
     abstract IsMatch: url: string -> bool
-    abstract DownloadAsync: url: string * direction: Direction -> Task<Result<unit, string>>
-    abstract UpdateAsync: mangaId: Guid -> Task<Result<bool, string>>
+    abstract DownloadAsync: url: string * direction: Direction -> TaskResult<unit, IMangaSharpError>
+    abstract UpdateAsync: mangaId: Guid -> TaskResult<bool, IMangaSharpError>

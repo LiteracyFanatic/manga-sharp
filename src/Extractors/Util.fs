@@ -1,6 +1,7 @@
 module MangaSharp.Extractors.Util
 
 open System
+open System.Threading.Tasks
 open type Environment
 open System.IO
 open System.Text.RegularExpressions
@@ -14,29 +15,24 @@ let private dataHome = Environment.GetFolderPath(SpecialFolder.LocalApplicationD
 let mangaData = Path.Combine(dataHome, "manga")
 
 let tryDownloadStringAsync (hc: HttpClient) (url: string) =
-    task {
-        try
-            let! res = hc.GetStringAsync(url)
-            return Ok res
-        with _ ->
-            return Error ""
-    }
+    hc.GetStringAsync(url) |> TaskResult.ofTask |> TaskResult.catch id
 
 module HtmlDocument =
 
     let tryParse (text: string) =
         try
             Ok(HtmlDocument.Parse text)
-        with _ ->
-            Error "Could not parse HTML document"
+        with e ->
+            Error e
 
-    let tryLoadAsync (hc: HttpClient) (url: string) =
-        task {
-            try
-                let! text = hc.GetStringAsync(url)
-                return tryParse text
-            with :? HttpRequestException ->
-                return Error $"Could not download %s{url}"
+    type TryLoadAsyncError =
+        | DownloadError of exn
+        | ParseError of exn
+
+    let tryLoadAsync (hc: HttpClient) (url: string) : Task<Result<HtmlDocument, TryLoadAsyncError>> =
+        taskResult {
+            let! text = tryDownloadStringAsync hc url |> TaskResult.mapError DownloadError
+            return! tryParse text |> Result.mapError ParseError
         }
 
 let openInDefaultApp (url: string) =
@@ -61,16 +57,26 @@ let openInDefaultApp (url: string) =
 
     Process.Start(startInfo)
 
+type QuerySelectorError =
+    | NoMatch of cssQuery: string
+    | MultipleMatches of cssQuery: string
+
 let querySelector (html: HtmlDocument) (cssQuery: string) =
     match html.CssSelect(cssQuery) with
-    | [] -> Error $"%s{cssQuery} did not match any elements"
+    | [] -> Error(NoMatch cssQuery)
     | [ node ] -> Ok node
-    | _ -> Error $"%s{cssQuery} matched multiple elements"
+    | _ -> Error(MultipleMatches cssQuery)
+
+type QuerySelectorAllError = NoMatch of cssQuery: string
 
 let querySelectorAll (html: HtmlDocument) (cssQuery: string) =
     match html.CssSelect(cssQuery) with
-    | [] -> Error $"%s{cssQuery} didn't match any elements"
+    | [] -> Error(NoMatch cssQuery)
     | elements -> Ok elements
+
+type RegexMatchError =
+    | NoMatch of Regex
+    | EmptyMatch of Regex
 
 let regexMatch (regex: Regex) (input: string) =
     let m = regex.Match(input)
@@ -81,19 +87,11 @@ let regexMatch (regex: Regex) (input: string) =
         match Seq.tryItem 1 groups with
         | Some group ->
             match group.Value.Trim() with
-            | "" -> Error $"%A{regex} returned an empty match"
+            | "" -> Error(EmptyMatch regex)
             | value -> Ok value
-        | None -> Error $"%A{regex} capture group 1 did not exist"
+        | None -> Error(NoMatch regex)
     else
-        Error $"%A{regex} did not match"
-
-let cssAndRegex (cssQuery: string) (regex: Regex) (html: HtmlDocument) =
-    result {
-        let! node = querySelector html cssQuery
-        let text = HtmlNode.directInnerText node
-        let! matchingText = regexMatch regex text
-        return matchingText.Trim()
-    }
+        Error(NoMatch regex)
 
 let resolveUrl (baseUrl: string) (url: string) = Uri(Uri(baseUrl), url).AbsoluteUri
 
@@ -117,3 +115,42 @@ let extractImageUrls (cssQuery: string) =
             let! nodes = querySelectorAll html cssQuery
             return Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url) nodes
         }
+
+type IMangaSharpError =
+    interface
+    end
+
+type CommonError =
+    | ParseError of exn
+    | TryLoadAsyncError of HtmlDocument.TryLoadAsyncError
+    | QuerySelectorError of QuerySelectorError
+    | QuerySelectorAllError of QuerySelectorAllError
+    | RegexMatchError of RegexMatchError
+    | Other of exn
+
+    interface IMangaSharpError
+    static member Map(e: HtmlDocument.TryLoadAsyncError) = TryLoadAsyncError e
+    static member Map(e: QuerySelectorError) = QuerySelectorError e
+    static member Map(e: QuerySelectorAllError) = QuerySelectorAllError e
+    static member Map(e: RegexMatchError) = RegexMatchError e
+    static member Map(e: exn) = Other e
+    static member FromResult(e: Result<'a, HtmlDocument.TryLoadAsyncError>) = e |> Result.mapError CommonError.Map
+    static member FromResult(e: Result<'a, QuerySelectorError>) = e |> Result.mapError CommonError.Map
+    static member FromResult(e: Result<'a, QuerySelectorAllError>) = e |> Result.mapError CommonError.Map
+    static member FromResult(e: Result<'a, RegexMatchError>) = e |> Result.mapError CommonError.Map
+    static member FromResult(e: Result<'a, exn>) = e |> Result.mapError CommonError.Map
+
+    static member FromTaskResult(e: TaskResult<'a, HtmlDocument.TryLoadAsyncError>) =
+        e |> TaskResult.mapError CommonError.Map
+
+    static member FromTaskResult(e: TaskResult<'a, QuerySelectorError>) =
+        e |> TaskResult.mapError CommonError.Map
+
+    static member FromTaskResult(e: TaskResult<'a, QuerySelectorAllError>) =
+        e |> TaskResult.mapError CommonError.Map
+
+    static member FromTaskResult(e: TaskResult<'a, RegexMatchError>) =
+        e |> TaskResult.mapError CommonError.Map
+
+    static member FromTaskResult(e: TaskResult<'a, exn>) =
+        e |> TaskResult.mapError CommonError.Map

@@ -22,9 +22,15 @@ type Manwha18CCExtractor
     let hc = httpFactory.CreateClient()
     do hc.DefaultRequestHeaders.Referrer <- Uri("https://manhwa18.cc/")
 
-    let getChaptersAsync (url: string) (html: HtmlDocument) (manga: Manga) =
+    let getChaptersAsync
+        (url: string)
+        (html: HtmlDocument)
+        (manga: Manga)
+        : TaskResult<ResizeArray<Chapter>, CommonError> =
         taskResult {
-            let! chapterUrls = extractChapterUrls ".chapter-name" url html
+            let! chapterUrls =
+                extractChapterUrls ".chapter-name" url html
+                |> Result.mapError QuerySelectorAllError
 
             let chapters =
                 chapterUrls
@@ -52,9 +58,11 @@ type Manwha18CCExtractor
         (chapterTitle: string)
         (mangaTitle: string)
         (chapterUrl: string)
-        =
+        : TaskResult<unit, CommonError> =
         taskResult {
-            let! imgs = extractImageUrls ".read-content img" chapterUrl chapterHtml
+            let! imgs =
+                extractImageUrls ".read-content img" chapterUrl chapterHtml
+                |> Result.mapError QuerySelectorAllError
 
             for i, img in Seq.indexed imgs do
                 use! imageStream = hc.GetStreamAsync(img)
@@ -62,7 +70,7 @@ type Manwha18CCExtractor
                 newChapter.Pages.Add(newPage)
         }
 
-    let downloadChapters (manga: Manga) =
+    let downloadChapters (manga: Manga) : TaskResult<unit, CommonError> =
         taskResult {
             let newChapters =
                 manga.Chapters
@@ -70,8 +78,13 @@ type Manwha18CCExtractor
                 |> Seq.toList
 
             for i, newChapter in Seq.indexed newChapters do
-                let! chapterHtml = HtmlDocument.tryLoadAsync hc newChapter.Url
-                let! chapterTitle = regexMatch (Regex("chapter-(\d+(-\d+)*)")) newChapter.Url
+                let! chapterHtml =
+                    HtmlDocument.tryLoadAsync hc newChapter.Url
+                    |> TaskResult.mapError TryLoadAsyncError
+
+                let! chapterTitle =
+                    regexMatch (Regex("chapter-(\d+(-\d+)*)")) newChapter.Url
+                    |> Result.mapError RegexMatchError
 
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
@@ -95,8 +108,12 @@ type Manwha18CCExtractor
 
         member this.DownloadAsync(url: string, direction: Direction) =
             taskResult {
-                let! html = HtmlDocument.tryLoadAsync hc url
-                let! title = cssAndRegex ".post-title h1" (Regex("(.*)")) html
+                let! html = HtmlDocument.tryLoadAsync hc url |> TaskResult.mapError TryLoadAsyncError
+
+                let! title =
+                    querySelector html ".post-title h1"
+                    |> Result.eitherMap (_.DirectInnerText().Trim()) QuerySelectorError
+
                 let! manga = mangaRepository.GetOrCreateAsync(title, direction, url)
                 let! chapters = getChaptersAsync url html manga
                 manga.Chapters <- chapters
@@ -106,11 +123,13 @@ type Manwha18CCExtractor
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", title)
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)
 
         member this.UpdateAsync(mangaId: Guid) =
             taskResult {
                 let! manga = mangaRepository.GetByIdAsync(mangaId)
-                let! html = HtmlDocument.tryLoadAsync hc manga.Url
+                let! html = HtmlDocument.tryLoadAsync hc manga.Url |> TaskResult.mapError TryLoadAsyncError
                 let! chapters = getChaptersAsync manga.Url html manga
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
@@ -122,3 +141,5 @@ type Manwha18CCExtractor
                 else
                     return false
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)

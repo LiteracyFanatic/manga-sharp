@@ -22,9 +22,15 @@ type ManganatoExtractor
     let hc = httpFactory.CreateClient()
     do hc.DefaultRequestHeaders.Referrer <- Uri("https://chapmanganato.com/")
 
-    let getChaptersAsync (url: string) (html: HtmlDocument) (manga: Manga) =
+    let getChaptersAsync
+        (url: string)
+        (html: HtmlDocument)
+        (manga: Manga)
+        : TaskResult<ResizeArray<Chapter>, CommonError> =
         taskResult {
-            let! chapterUrls = extractChapterUrls ".chapter-name" url html
+            let! chapterUrls =
+                extractChapterUrls ".chapter-name" url html
+                |> Result.mapError QuerySelectorAllError
 
             let chapters =
                 chapterUrls
@@ -46,11 +52,16 @@ type ManganatoExtractor
             return mergedChapters
         }
 
-    let downloadChapter (newChapter: Chapter) (chapterHtml: HtmlDocument) (chapterTitle: string) (mangaTitle: string) =
+    let downloadChapter
+        (newChapter: Chapter)
+        (chapterHtml: HtmlDocument)
+        (chapterTitle: string)
+        (mangaTitle: string)
+        : TaskResult<unit, CommonError> =
         taskResult {
             let! imgs =
                 querySelectorAll chapterHtml ".container-chapter-reader img"
-                |> Result.map (List.map (HtmlNode.attributeValue "src"))
+                |> Result.eitherMap (List.map (HtmlNode.attributeValue "src")) QuerySelectorAllError
 
             for i, img in List.indexed imgs do
                 use! imageStream = hc.GetStreamAsync(img)
@@ -58,7 +69,7 @@ type ManganatoExtractor
                 newChapter.Pages.Add(newPage)
         }
 
-    let downloadChapters (manga: Manga) =
+    let downloadChapters (manga: Manga) : TaskResult<unit, CommonError> =
         taskResult {
             let newChapters =
                 manga.Chapters
@@ -66,8 +77,13 @@ type ManganatoExtractor
                 |> Seq.toList
 
             for i, newChapter in Seq.indexed newChapters do
-                let! chapterHtml = HtmlDocument.tryLoadAsync hc newChapter.Url
-                let! chapterTitle = regexMatch (Regex("chapter-(.*)")) newChapter.Url
+                let! chapterHtml =
+                    HtmlDocument.tryLoadAsync hc newChapter.Url
+                    |> TaskResult.mapError TryLoadAsyncError
+
+                let! chapterTitle =
+                    regexMatch (Regex("chapter-(.*)")) newChapter.Url
+                    |> Result.mapError RegexMatchError
 
                 logger.LogInformation(
                     "Downloading {Title} Chapter {ChapterTitle} ({ChapterNumber}/{NumberOfChapters})",
@@ -91,8 +107,13 @@ type ManganatoExtractor
 
         member this.DownloadAsync(url: string, direction: Direction) =
             taskResult {
-                let! html = HtmlDocument.tryLoadAsync hc url
-                let! title = cssAndRegex "title" (Regex("(.*) Manga Online Free - Manganato")) html
+                let! html = HtmlDocument.tryLoadAsync hc url |> TaskResult.mapError TryLoadAsyncError
+                let! titleNode = querySelector html "title" |> Result.mapError QuerySelectorError
+
+                let! title =
+                    regexMatch (Regex("(.*) Manga Online Free - Manganato")) (titleNode.DirectInnerText())
+                    |> Result.mapError RegexMatchError
+
                 let! manga = mangaRepository.GetOrCreateAsync(title, direction, url)
                 let! chapters = getChaptersAsync url html manga
                 manga.Chapters <- chapters
@@ -102,11 +123,13 @@ type ManganatoExtractor
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", title)
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)
 
         member this.UpdateAsync(mangaId: Guid) =
             taskResult {
                 let! manga = mangaRepository.GetByIdAsync(mangaId)
-                let! html = HtmlDocument.tryLoadAsync hc manga.Url
+                let! html = HtmlDocument.tryLoadAsync hc manga.Url |> TaskResult.mapError TryLoadAsyncError
                 let! chapters = getChaptersAsync manga.Url html manga
                 manga.Chapters <- chapters
                 let! _ = db.SaveChangesAsync()
@@ -118,3 +141,5 @@ type ManganatoExtractor
                 else
                     return false
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)

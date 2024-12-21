@@ -33,6 +33,7 @@ type MangaDexExtractor
 
     let getIdFromUrl (url: string) =
         regexMatch (Regex("https://mangadex\.org/title/([^/]*)(/.*)?")) url
+        |> Result.mapError RegexMatchError
 
     let getChaptersAsync (mangaId: string) (manga: Manga) (chapterNumbersResetOnNewVolume: bool) =
         taskResult {
@@ -71,8 +72,14 @@ type MangaDexExtractor
 
             return mergedChapters
         }
+        |> TaskResult.catch Other
 
-    let downloadPage (mangaTitle: string) (chapterTitle: string) (i: int) (img: string) =
+    let downloadPage
+        (mangaTitle: string)
+        (chapterTitle: string)
+        (i: int)
+        (img: string)
+        : TaskResult<Page, CommonError> =
         taskResult {
             let sw = Stopwatch()
             sw.Start()
@@ -101,7 +108,7 @@ type MangaDexExtractor
 
                 do! mangaDexApi.PostHealthReportAsync(request)
                 return page
-            with _ ->
+            with e ->
                 sw.Stop()
 
                 let request = {
@@ -113,7 +120,7 @@ type MangaDexExtractor
                 }
 
                 do! mangaDexApi.PostHealthReportAsync(request)
-                return! Error ""
+                return! Error(Other e)
         }
 
     let downloadChapter (newChapter: Chapter) (chapterTitle: string) (chapterId: string) (mangaTitle: string) =
@@ -129,7 +136,7 @@ type MangaDexExtractor
                 newChapter.Pages.Add(newPage)
         }
 
-    let downloadChapters (manga: Manga) =
+    let downloadChapters (manga: Manga) : TaskResult<unit, CommonError> =
         taskResult {
             let newChapters =
                 manga.Chapters
@@ -137,7 +144,10 @@ type MangaDexExtractor
                 |> Seq.toList
 
             for i, newChapter in Seq.indexed newChapters do
-                let! chapterId = regexMatch (Regex("https://mangadex.org/chapter/(.*)")) newChapter.Url
+                let! chapterId =
+                    regexMatch (Regex("https://mangadex.org/chapter/(.*)")) newChapter.Url
+                    |> Result.mapError RegexMatchError
+
                 let chapterTitle = newChapter.Title
 
                 logger.LogInformation(
@@ -181,6 +191,8 @@ type MangaDexExtractor
                     do! downloadChapters manga
                     logger.LogInformation("Finished downloading {Title}", title)
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)
 
         member this.UpdateAsync(mangaId: Guid) =
             taskResult {
@@ -198,3 +210,5 @@ type MangaDexExtractor
                 else
                     return false
             }
+            |> TaskResult.catch Other
+            |> TaskResult.mapError (fun e -> e :> IMangaSharpError)
