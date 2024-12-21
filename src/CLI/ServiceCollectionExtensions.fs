@@ -50,4 +50,4 @@ module Extensions =
                 .WithUnionUnwrapRecordCases()
                 .AddToJsonSerializerOptions(serializationOptions)
 
-            this.AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializationOptions))
+            this.AddSingleton<Json.ISerializer>(Json.Serializer(serializationOptions))
