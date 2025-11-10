@@ -116,9 +116,7 @@ let extractImageUrls (cssQuery: string) =
             return Seq.map (HtmlNode.attributeValue "src" >> resolveUrl url) nodes
         }
 
-type IMangaSharpError =
-    interface
-    end
+type IMangaSharpError = interface end
 
 type CommonError =
     | ParseError of exn

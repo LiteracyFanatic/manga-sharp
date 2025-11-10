@@ -283,11 +283,7 @@ type Application
 
     member this.Update(args: ParseResults<UpdateArgs>) =
         let allManga =
-            db.Manga
-                .AsNoTracking()
-                .Include(fun m -> m.Chapters)
-                .OrderBy(fun m -> m.Title)
-                .ToList()
+            db.Manga.AsNoTracking().Include(fun m -> m.Chapters).OrderBy(fun m -> m.Title).ToList()
             |> List.ofSeq
 
         let manga =

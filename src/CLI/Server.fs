@@ -243,9 +243,7 @@ module WebApp =
     let getMangaUrl (port: int option) (manga: Manga) =
         $"%s{getIndexUrl port}/%s{getBookmarkUrl manga}/"
 
-    type AssemblyMarker() =
-        class
-        end
+    type AssemblyMarker() = class end
 
     let create (port: int option) =
         let hostBuilder = Host.CreateDefaultBuilder()
