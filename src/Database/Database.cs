@@ -64,7 +64,7 @@ public class Chapter : IEntityTypeConfiguration<Chapter>
     public required DownloadStatus DownloadStatus { get; set; }
     public DateTime Created { get; set; }
     public Guid MangaId { get; set; }
-    public Manga Manga { get; set; }
+    public Manga Manga { get; set; } = null!;
     public List<Page> Pages { get; set; } = [];
 
     public void Configure(EntityTypeBuilder<Chapter> builder)
@@ -90,7 +90,7 @@ public class Page : IEntityTypeConfiguration<Page>
     public required int Width { get; set; }
     public required int Height { get; set; }
     public Guid ChapterId { get; set; }
-    public Chapter Chapter { get; set; }
+    public Chapter Chapter { get; set; } = null!;
 
     public void Configure(EntityTypeBuilder<Page> builder)
     {
