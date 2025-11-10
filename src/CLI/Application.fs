@@ -346,7 +346,7 @@ type Application
                     res
                 | None ->
                     logger.LogError("Could not find a provider for the following URL: {Url}", m.Url)
-                    exit 1)
+                    Ok false)
             |> List.contains (Ok(true))
 
         if not updated then

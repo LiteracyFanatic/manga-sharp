@@ -87,7 +87,11 @@ module WebApp =
                             | Some chapterId -> chapters |> Seq.findIndex (fun c -> c.Id = chapterId)
                             | None -> 0
 
-                        let updated = m.Chapters |> Seq.map (fun c -> c.Created) |> Seq.max
+                        let updated =
+                            if m.Chapters.Count > 0 then
+                                m.Chapters |> Seq.map (fun c -> c.Created) |> Seq.max
+                            else
+                                DateTime.MinValue
 
                         {
                             Id = m.Id

@@ -69,8 +69,10 @@ let getBookmarkUrl (manga: Manga) =
         let chapter =
             manga.Chapters
             |> Seq.sortBy (fun c -> c.Index)
-            |> Seq.find (fun c ->
+            |> Seq.tryFind (fun c ->
                 c.DownloadStatus = DownloadStatus.Downloaded
                 || c.DownloadStatus = DownloadStatus.Archived)
-
-        $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}"
+        match chapter with
+        | None -> "/"
+        | Some chapter ->
+            $"/chapters/%A{chapter.Id}/%s{slugify manga.Title}/%s{chapter.Title}"
