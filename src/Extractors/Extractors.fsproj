@@ -23,6 +23,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Flurl" Version="4.0.0" />
+    <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.0" />
     <PackageReference Include="Fsharp.data" Version="6.6.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.1.0" />
     <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.18.0" />

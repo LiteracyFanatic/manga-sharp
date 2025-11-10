@@ -1,6 +1,7 @@
 namespace MangaSharp.Extractors
 
 open System
+open FSharp.Control
 open FSharp.Data
 open System.Net.Http
 open System.Text.RegularExpressions
@@ -20,7 +21,7 @@ type ManganatoExtractor
     ) =
 
     let hc = httpFactory.CreateClient()
-    do hc.DefaultRequestHeaders.Referrer <- Uri("https://chapmanganato.com/")
+    do hc.DefaultRequestHeaders.Referrer <- Uri("https://www.natomanga.com/")
 
     let getChaptersAsync
         (url: string)
@@ -29,7 +30,7 @@ type ManganatoExtractor
         : TaskResult<ResizeArray<Chapter>, CommonError> =
         taskResult {
             let! chapterUrls =
-                extractChapterUrls ".chapter-name" url html
+                extractChapterUrls ".chapter-list a" url html
                 |> Result.mapError QuerySelectorAllError
 
             let chapters =
@@ -63,14 +64,17 @@ type ManganatoExtractor
                 querySelectorAll chapterHtml ".container-chapter-reader img"
                 |> Result.eitherMap (List.map (HtmlNode.attributeValue "src")) QuerySelectorAllError
 
-            for i, img in List.indexed imgs do
-                try
-                    use! imageStream = hc.GetStreamAsync(img)
-                    let! newPage = pageSaver.SavePageAsync(mangaTitle, chapterTitle, i, imageStream)
-                    newChapter.Pages.Add(newPage)
-                with
-                | :? HttpRequestException as e ->
-                    logger.LogError(e, "Failed to download image {ImageUrl}", img)
+            let imageStreams = taskSeq {
+                for img in imgs do
+                    try
+                        let! stream = hc.GetStreamAsync(img)
+                        yield stream
+                    with :? HttpRequestException as e ->
+                        logger.LogError(e, "Failed to download image {ImageUrl}", img)
+            }
+
+            let! newPages = pageSaver.SaveSlicedPagesAsync(mangaTitle, chapterTitle, imageStreams)
+            newChapter.Pages.AddRange(newPages)
         }
 
     let downloadChapters (manga: Manga) : TaskResult<unit, CommonError> =
@@ -107,7 +111,7 @@ type ManganatoExtractor
     interface IMangaExtractor with
 
         member this.IsMatch(url: string) =
-            Regex("https://(chap)?manganato\.(com|to)/manga.*").IsMatch(url)
+            Regex("https://www.natomanga.com/manga.*").IsMatch(url)
 
         member this.DownloadAsync(url: string, direction: Direction) =
             taskResult {
@@ -115,7 +119,7 @@ type ManganatoExtractor
                 let! titleNode = querySelector html "title" |> Result.mapError QuerySelectorError
 
                 let! title =
-                    regexMatch (Regex("(.*) Manga Online Free - Manganato")) (titleNode.DirectInnerText())
+                    regexMatch (Regex("(?:Read)?(.*) Manga Online.*")) (titleNode.DirectInnerText())
                     |> Result.mapError RegexMatchError
 
                 let! manga = mangaRepository.GetOrCreateAsync(title, direction, url)
