@@ -1,7 +1,6 @@
 #nowarn "20"
 namespace MangaSharp.CLI
 
-open EntityFrameworkCore.FSharp.Extensions
 open Microsoft.EntityFrameworkCore
 open Microsoft.EntityFrameworkCore.Diagnostics
 open Microsoft.Extensions.DependencyInjection
@@ -27,7 +26,6 @@ module Extensions =
 
             this.AddDbContext<MangaContext>(fun options ->
                 options.UseSqlite($"Data Source=%s{dbFile};foreign keys=true")
-                options.UseFSharpTypes()
                 options.EnableSensitiveDataLogging()
 
                 options.ConfigureWarnings(fun w ->

@@ -59,7 +59,7 @@ let getCliApp () =
                     .HandleTransientHttpError()
                     .WaitAndRetryAsync(
                         3,
-                        (fun n -> TimeSpan.FromSeconds(2 ** n)),
+                        (fun n -> TimeSpan.FromSeconds(2. ** n)),
                         (fun _ delay -> logger.LogError("Retrying request after {Delay}", delay))
                     )
                 :> IAsyncPolicy<HttpResponseMessage>)
