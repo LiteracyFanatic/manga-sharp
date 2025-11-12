@@ -2,7 +2,6 @@ import { MoreHoriz } from "@mui/icons-material";
 import {
     Box,
     IconButton,
-    List,
     ListItem,
     ListItemButton,
     ListItemText,
@@ -16,6 +15,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 import { MangaGetResponse } from "../Api";
+import { Virtuoso } from "react-virtuoso";
 
 interface MangaListItemProps {
     manga: Fuzzysort.KeysResult<MangaGetResponse>
@@ -89,9 +89,12 @@ interface MangaListProps {
 export default function MangaList(props: MangaListProps) {
     return (
         <Paper sx={props.sx}>
-            <List>
-                {props.manga.map(m => <MangaListItem key={m.obj.Id} manga={m} />)}
-            </List>
+            <Virtuoso
+                useWindowScroll
+                totalCount={props.manga.length}
+                itemContent={i => <MangaListItem manga={props.manga[i]} />}
+
+            />
         </Paper>
     );
 }
