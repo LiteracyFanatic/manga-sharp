@@ -28,14 +28,63 @@ module WebApp =
         PageId: Guid option
     }
 
-    let putBookmarkHandler (mangaId: Guid) (request: PutBookmarkRequest) : HttpHandler =
+    [<CLIMutable>]
+    type PutDirectionRequest = {
+        Direction: Direction
+    }
+
+    let putDirectionHandler (mangaId: Guid) (request: PutDirectionRequest) : HttpHandler =
+        fun next ctx ->
+            task {
+                let service = ctx.GetService<MangaService>()
+                do! service.SetDirection(mangaId, request.Direction)
+                return! Successful.NO_CONTENT next ctx
+            }
+
+    let deleteMangaHandler (mangaId: Guid) : HttpHandler =
         fun next ctx ->
             task {
                 let db = ctx.GetService<MangaContext>()
-                let! manga = db.Manga.SingleAsync(fun m -> m.Id = mangaId)
-                manga.BookmarkChapterId <- request.ChapterId
-                manga.BookmarkPageId <- Option.toNullable request.PageId
-                let! _ = db.SaveChangesAsync()
+                let! exists = db.Manga.AnyAsync(fun m -> m.Id = mangaId)
+                if not exists then
+                    return! RequestErrors.NOT_FOUND "Manga not found" next ctx
+                else
+                    let service = ctx.GetService<MangaService>()
+                    do! service.Delete(mangaId)
+                    return! Successful.NO_CONTENT next ctx
+            }
+
+    let archiveMangaHandler (mangaId: Guid) : HttpHandler =
+        fun next ctx ->
+            task {
+                let db = ctx.GetService<MangaContext>()
+                let! exists = db.Manga.AnyAsync(fun m -> m.Id = mangaId)
+                if not exists then
+                    return! RequestErrors.NOT_FOUND "Manga not found" next ctx
+                else
+                    let service = ctx.GetService<MangaService>()
+                    do! service.ArchiveAll(mangaId)
+                    return! Successful.NO_CONTENT next ctx
+            }
+
+    let unarchiveMangaHandler (mangaId: Guid) : HttpHandler =
+        fun next ctx ->
+            task {
+                let db = ctx.GetService<MangaContext>()
+                let! exists = db.Manga.AnyAsync(fun m -> m.Id = mangaId)
+                if not exists then
+                    return! RequestErrors.NOT_FOUND "Manga not found" next ctx
+                else
+                    let service = ctx.GetService<MangaService>()
+                    do! service.UnarchiveAll(mangaId)
+                    return! Successful.NO_CONTENT next ctx
+            }
+
+    let putBookmarkHandler (mangaId: Guid) (request: PutBookmarkRequest) : HttpHandler =
+        fun next ctx ->
+            task {
+                let service = ctx.GetService<MangaService>()
+                do! service.SetBookmark(mangaId, request.ChapterId, request.PageId)
                 return! Successful.NO_CONTENT next ctx
             }
 
@@ -52,7 +101,13 @@ module WebApp =
         Id: Guid
         Title: string
         BookmarkUrl: string
-        NumberOfChapters: int
+        NumberOfChapters: {|
+            NotDownloaded: int
+            Downloaded: int
+            Archived: int
+            Ignored: int
+            Total: int
+        |}
         ChapterIndex: int
         Direction: Direction
         SourceUrl: string
@@ -83,9 +138,10 @@ module WebApp =
                             |> Seq.sortBy (fun c -> c.Index)
 
                         let chapterIndex =
-                            match Option.ofNullable m.BookmarkChapterId with
-                            | Some chapterId -> chapters |> Seq.findIndex (fun c -> c.Id = chapterId)
-                            | None -> 0
+                            m.BookmarkChapterId
+                            |> Option.ofNullable
+                            |> Option.bind (fun chapterId -> chapters |> Seq.tryFindIndex (fun c -> c.Id = chapterId))
+                            |> Option.defaultValue 0
 
                         let updated =
                             if m.Chapters.Count > 0 then
@@ -93,11 +149,30 @@ module WebApp =
                             else
                                 DateTime.MinValue
 
+
                         {
                             Id = m.Id
                             Title = m.Title
                             BookmarkUrl = getBookmarkUrl m
-                            NumberOfChapters = chapters.Count()
+                            NumberOfChapters = {|
+                                NotDownloaded =
+                                    m.Chapters
+                                    |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.NotDownloaded)
+                                    |> Seq.length
+                                Downloaded =
+                                    m.Chapters
+                                    |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Downloaded)
+                                    |> Seq.length
+                                Archived =
+                                    m.Chapters
+                                    |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Archived)
+                                    |> Seq.length
+                                Ignored =
+                                    m.Chapters
+                                    |> Seq.filter (fun c -> c.DownloadStatus = DownloadStatus.Ignored)
+                                    |> Seq.length
+                                Total = m.Chapters.Count
+                            |}
                             ChapterIndex = chapterIndex
                             Direction = m.Direction
                             SourceUrl = m.Url
@@ -229,6 +304,14 @@ module WebApp =
             GET [ route "/manga" getMangaHandler; routef "/chapters/%O" getChapterHandler ]
             PUT [
                 routef "/manga/%O/bookmark" (putBookmarkHandler >> bindJson<PutBookmarkRequest>)
+                routef "/manga/%O/direction" (putDirectionHandler >> bindJson<PutDirectionRequest>)
+            ]
+            POST [
+                routef "/manga/%O/archive" (fun id -> archiveMangaHandler id)
+                routef "/manga/%O/unarchive" (fun id -> unarchiveMangaHandler id)
+            ]
+            DELETE [
+                routef "/manga/%O" (fun id -> deleteMangaHandler id)
             ]
         ]
         GET [ route "{*rest}" serveSpa ]
@@ -271,6 +354,7 @@ module WebApp =
 
             webHostBuilder.ConfigureServices(fun services ->
                 services.AddMangaContext()
+                services.AddTransient<MangaService>()
                 services.AddJsonSerializer()
                 services.AddSingleton<IFileProvider>(fileProvider) |> ignore)
 

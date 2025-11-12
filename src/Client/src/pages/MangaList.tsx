@@ -14,7 +14,8 @@ import {
 import React from "react";
 import { Link } from "react-router-dom";
 
-import { MangaGetResponse } from "../Api";
+import { MangaGetResponse, useArchiveManga, useDeleteManga, useSetMangaDirection, useUnarchiveManga } from "../Api";
+import { useConfirm } from "material-ui-confirm";
 import { Virtuoso } from "react-virtuoso";
 
 interface MangaListItemProps {
@@ -23,6 +24,37 @@ interface MangaListItemProps {
 
 function MangaListItem(props: MangaListItemProps) {
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+    const confirm = useConfirm();
+    const deleteManga = useDeleteManga();
+    const archiveManga = useArchiveManga();
+    const unarchiveManga = useUnarchiveManga();
+    const setMangaDirection = useSetMangaDirection();
+
+    const disabled = deleteManga.loading || archiveManga.loading || unarchiveManga.loading || setMangaDirection.loading;
+
+    async function handleDelete() {
+        setAnchorEl(null);
+        await confirm({ title: "Delete manga?", description: "This will permanently remove the manga and all chapters." });
+        await deleteManga.trigger(props.manga.obj.Id);
+    }
+
+    async function handleArchive() {
+        setAnchorEl(null);
+        await confirm({ title: "Archive manga?", description: "All downloaded chapters will be marked archived." });
+        await archiveManga.trigger(props.manga.obj.Id);
+    }
+
+    async function handleUnarchive() {
+        setAnchorEl(null);
+        await confirm({ title: "Unarchive manga?", description: "All archived chapters will be restored to downloaded." });
+        await unarchiveManga.trigger(props.manga.obj.Id);
+    }
+
+    async function handleDirectionChange() {
+        setAnchorEl(null);
+        const nextDirection = props.manga.obj.Direction === "Horizontal" ? "Vertical" : "Horizontal";
+        await setMangaDirection.trigger(props.manga.obj.Id, nextDirection);
+    }
 
     const highlightedTitle = props.manga[0].highlight((m, i) => (
         <Box
@@ -39,10 +71,20 @@ function MangaListItem(props: MangaListItemProps) {
     ));
     const title = highlightedTitle?.length ? highlightedTitle : props.manga.obj.Title;
 
-    const secondaryText = `(${props.manga.obj.ChapterIndex + 1}/${props.manga.obj.NumberOfChapters}) ${props.manga.obj.Direction} ${props.manga.obj.Updated.toLocaleDateString()}`;
+    let location = "";
+    if (props.manga.obj.NumberOfChapters.Downloaded > 0) {
+        location = `${props.manga.obj.ChapterIndex + 1}/${props.manga.obj.NumberOfChapters.Downloaded}`
+    } else if (props.manga.obj.NumberOfChapters.Archived > 0) {
+        location = "archived";
+    } else if (props.manga.obj.NumberOfChapters.NotDownloaded > 0) {
+        location = "pending download";
+    }
+
+    const secondaryText = `(${location}) ${props.manga.obj.Direction} ${props.manga.obj.Updated.toLocaleDateString()}`;
 
     return (
-        <Box>
+        <Box
+        >
             <ListItem
                 disablePadding
                 secondaryAction={
@@ -54,6 +96,7 @@ function MangaListItem(props: MangaListItemProps) {
                     </IconButton>}
             >
                 <ListItemButton
+                    disabled={!props.manga.obj.NumberOfChapters.Downloaded}
                     component={Link}
                     to={props.manga.obj.BookmarkUrl}
                     divider={true}
@@ -76,6 +119,14 @@ function MangaListItem(props: MangaListItemProps) {
                 >
                     View Source
                 </MenuItem>
+                <MenuItem disabled={disabled} onClick={handleDelete}>Delete</MenuItem>
+                {props.manga.obj.NumberOfChapters.Downloaded > 0 && (
+                    <MenuItem disabled={disabled} onClick={handleArchive}>Archive</MenuItem>
+                )}
+                {props.manga.obj.NumberOfChapters.Archived > 0 && (
+                    <MenuItem disabled={disabled} onClick={handleUnarchive}>Unarchive</MenuItem>
+                )}
+                <MenuItem disabled={disabled} onClick={handleDirectionChange}>Change Direction</MenuItem>
             </Menu>
         </Box>
     );

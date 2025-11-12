@@ -33,7 +33,8 @@ type Application
         db: MangaContext,
         extractors: IEnumerable<IMangaExtractor>,
         jsonSerializer: Json.ISerializer,
-        logger: ILogger<Application>
+        logger: ILogger<Application>,
+        mangaService: MangaService
     ) =
 
     let ensureExtractors (urls: string list) =
@@ -128,140 +129,6 @@ type Application
         let json = jsonSerializer.SerializeToString(manga)
         printfn $"%s{json}"
 
-    let getDirForMangaSafe (manga: Manga) =
-        let dir = Path.Combine(mangaData, manga.Title)
-        // Make sure we don't accidentally delete the whole manga directory if manga.Title is somehow empty
-        if dir = mangaData then
-            logger.LogError("Manga had no title. Refusing to delete {MangaDataDirectory}.", mangaData)
-            exit 1
-        else
-            dir
-
-    // Remove manga from database and associated files from disk
-    let rm (manga: Manga) =
-        let dir = getDirForMangaSafe manga
-
-        try
-            db.Manga.Remove(manga) |> ignore
-            db.SaveChanges() |> ignore
-            logger.LogInformation("Removed {Title} from database.", manga.Title)
-
-            try
-                if Directory.Exists(dir) then
-                    Directory.Delete(dir, true)
-
-                logger.LogInformation("Deleted {MangaDirectory}.", dir)
-            with e ->
-                logger.LogError(e, "Couldn't delete {MangaDirectory}.", dir)
-        with e ->
-            logger.LogError(e, "Something went wrong while removing {Title} from database.", manga.Title)
-
-    let tryGetChapterByTitleOption (defaultChapter: Chapter) (manga: Manga) (chapterTitle: string option) =
-        match chapterTitle with
-        | None -> Some defaultChapter
-        | Some chapterTitle ->
-            match manga.Chapters |> Seq.tryFind (fun c -> c.Title = chapterTitle) with
-            | None ->
-                logger.LogError("Could not find a chapter with title {ChapterTitle}.", chapterTitle)
-                None
-            | chapter -> chapter
-
-    let tryGetFromChapterByTitleOption (manga: Manga) (chapterTitle: string option) =
-        let defaultChapter = manga.Chapters |> Seq.minBy (fun c -> c.Index)
-        tryGetChapterByTitleOption defaultChapter manga chapterTitle
-
-    let tryGetToChapterByTitleOption (manga: Manga) (chapterTitle: string option) =
-        let defaultChapter = manga.Chapters |> Seq.maxBy (fun c -> c.Index)
-        tryGetChapterByTitleOption defaultChapter manga chapterTitle
-
-    let archiveChapters (manga: Manga) (fromChapter: Chapter) (toChapter: Chapter) =
-        let chapters =
-            manga.Chapters
-            |> Seq.sortBy (fun c -> c.Index)
-            |> Seq.filter (fun c -> c.Index >= fromChapter.Index && c.Index <= toChapter.Index)
-
-        if Seq.isEmpty chapters then
-            logger.LogError("No matching chapters found for {Title}.", manga.Title)
-        else
-            for chapter in chapters do
-                // Leave chapters with other statuses the same so that we don't try to access null titles in other parts of the code
-                if chapter.DownloadStatus = DownloadStatus.Downloaded then
-                    chapter.DownloadStatus <- DownloadStatus.Archived
-
-                chapter.Pages.Clear()
-
-            db.SaveChanges() |> ignore
-            logger.LogInformation("Marked matching chapters for {Title} as archived in database.", manga.Title)
-            let mangaDir = getDirForMangaSafe manga
-
-            for chapter in chapters do
-                match Option.ofObj chapter.Title with
-                | Some chapterTitle ->
-                    let dir = Path.Combine(mangaDir, chapterTitle)
-
-                    try
-                        if Directory.Exists(dir) then
-                            Directory.Delete(dir, true)
-
-                        logger.LogInformation("Deleted {MangaChapterDirectory}.", dir)
-                    with e ->
-                        logger.LogError(e, "Couldn't delete {MangaChapterDirectory}.", dir)
-                | None -> ()
-
-    // Mark manga chapters as archived in database and remove associated files from disk
-    let archive (manga: Manga) (fromChapterTitle: string option) (toChapterTitle: string option) =
-        if Seq.isEmpty manga.Chapters then
-            logger.LogError("{Title} has no chapters.", manga.Title)
-        else
-            try
-                let fromChapter = tryGetFromChapterByTitleOption manga fromChapterTitle
-                let toChapter = tryGetToChapterByTitleOption manga toChapterTitle
-
-                match fromChapter, toChapter with
-                | Some fromChapter, Some toChapter -> archiveChapters manga fromChapter toChapter
-                | _ -> ()
-            with e ->
-                logger.LogError(
-                    e,
-                    "Something went wrong while marking chapters for {Title} as archived in database.",
-                    manga.Title
-                )
-
-    let unarchiveChapters (manga: Manga) (fromChapter: Chapter) (toChapter: Chapter) =
-        let chapters =
-            manga.Chapters
-            |> Seq.sortBy (fun c -> c.Index)
-            |> Seq.filter (fun c -> c.Index >= fromChapter.Index && c.Index <= toChapter.Index)
-
-        if Seq.isEmpty chapters then
-            logger.LogError("No matching chapters found for {Title}.", manga.Title)
-        else
-            for chapter in chapters do
-                if chapter.DownloadStatus = DownloadStatus.Archived then
-                    chapter.DownloadStatus <- DownloadStatus.NotDownloaded
-
-            db.SaveChanges() |> ignore
-            logger.LogInformation("Marked matching chapters for {Title} as not downloaded in database.", manga.Title)
-
-    // Mark archived manga chapters as not downloaded in database
-    let unarchive (manga: Manga) (fromChapterTitle: string option) (toChapterTitle: string option) =
-        if Seq.isEmpty manga.Chapters then
-            logger.LogError("{Title} has no chapters.", manga.Title)
-        else
-            try
-                let fromChapter = tryGetFromChapterByTitleOption manga fromChapterTitle
-                let toChapter = tryGetToChapterByTitleOption manga toChapterTitle
-
-                match fromChapter, toChapter with
-                | Some fromChapter, Some toChapter -> unarchiveChapters manga fromChapter toChapter
-                | _ -> ()
-            with e ->
-                logger.LogError(
-                    e,
-                    "Something went wrong while marking chapters for {Title} as not downloaded in database.",
-                    manga.Title
-                )
-
     member this.Download(args: ParseResults<DownloadArgs>) =
         if not (args.Contains(Url)) then
             args.Raise("Argument --url is required")
@@ -353,12 +220,17 @@ type Application
 
     member this.Rm(args: ParseResults<RmArgs>) =
         match args.Contains(RmArgs.All), args.TryGetResult(RmArgs.Title) with
-        | true, None -> db.Manga.OrderBy(fun m -> m.Title).ToList().ForEach(rm)
+        | true, None ->
+            db.Manga
+                .OrderBy(fun m -> m.Title)
+                .Select(fun m -> m.Id)
+                .ToList()
+                .ForEach(fun id -> mangaService.Delete(id) |> Async.AwaitTask |> Async.RunSynchronously)
         | true, _ -> args.Raise("Cannot specify --all and a manga title at the same time")
         | false, None -> args.Raise("Either --all or a manga title must be specified")
         | false, Some title ->
             match db.Manga.TryFirst(fun m -> m.Title = title) with
-            | Some m -> rm m
+            | Some m -> mangaService.Delete(m.Id) |> Async.AwaitTask |> Async.RunSynchronously
             | None ->
                 logger.LogError("Manga {Title} could not be found", title)
                 exit 1
@@ -370,27 +242,20 @@ type Application
                 args.Raise("Cannot specify --all in combination with --from-chapter or --to-chapter")
             else
                 db.Manga
-                    .Include(fun m -> m.Chapters :> IEnumerable<_>)
-                    .ThenInclude(fun (c: Chapter) -> c.Pages)
-                    .AsSplitQuery()
                     .OrderBy(fun m -> m.Title)
+                    .Select(fun m -> m.Id)
                     .ToList()
-                    .ForEach(fun m -> archive m None None)
+                    .ForEach(fun id -> mangaService.ArchiveAll(id) |> Async.AwaitTask |> Async.RunSynchronously)
         | true, _ -> args.Raise("Cannot specify --all and a manga title at the same time")
         | false, None -> args.Raise("Either --all or a manga title must be specified")
         | false, Some title ->
             let fromChapter = args.TryGetResult(ArchiveArgs.From_Chapter)
             let toChapter = args.TryGetResult(ArchiveArgs.To_Chapter)
 
-            let manga =
-                db.Manga
-                    .Include(fun m -> m.Chapters :> IEnumerable<_>)
-                    .ThenInclude(fun (c: Chapter) -> c.Pages)
-                    .AsSplitQuery()
-                    .TryFirst(fun m -> m.Title = title)
+            let manga = db.Manga.TryFirst(fun m -> m.Title = title)
 
             match manga with
-            | Some m -> archive m fromChapter toChapter
+            | Some m -> mangaService.ArchiveRange(m.Id, fromChapter, toChapter) |> Async.AwaitTask |> Async.RunSynchronously
             | None ->
                 logger.LogError("Manga {Title} could not be found", title)
                 exit 1
@@ -398,26 +263,23 @@ type Application
     member this.Unarchive(args: ParseResults<UnarchiveArgs>) =
         match args.Contains(UnarchiveArgs.All), args.TryGetResult(UnarchiveArgs.Title) with
         | true, None ->
-            if
-                args.Contains(UnarchiveArgs.From_Chapter)
-                || args.Contains(UnarchiveArgs.To_Chapter)
-            then
+            if args.Contains(UnarchiveArgs.From_Chapter) || args.Contains(UnarchiveArgs.To_Chapter) then
                 args.Raise("Cannot specify --all in combination with --from-chapter or --to-chapter")
             else
                 db.Manga
-                    .Include(fun m -> m.Chapters)
                     .OrderBy(fun m -> m.Title)
+                    .Select(fun m -> m.Id)
                     .ToList()
-                    .ForEach(fun m -> unarchive m None None)
+                    .ForEach(fun id -> mangaService.UnarchiveAll(id) |> Async.AwaitTask |> Async.RunSynchronously)
         | true, _ -> args.Raise("Cannot specify --all and a manga title at the same time")
         | false, None -> args.Raise("Either --all or a manga title must be specified")
         | false, Some title ->
             let fromChapter = args.TryGetResult(UnarchiveArgs.From_Chapter)
             let toChapter = args.TryGetResult(UnarchiveArgs.To_Chapter)
-            let manga = db.Manga.Include(fun m -> m.Chapters).TryFirst(fun m -> m.Title = title)
+            let manga = db.Manga.TryFirst(fun m -> m.Title = title)
 
             match manga with
-            | Some m -> unarchive m fromChapter toChapter
+            | Some m -> mangaService.UnarchiveRange(m.Id, fromChapter, toChapter) |> Async.AwaitTask |> Async.RunSynchronously
             | None ->
                 logger.LogError("Manga {Title} could not be found", title)
                 exit 1

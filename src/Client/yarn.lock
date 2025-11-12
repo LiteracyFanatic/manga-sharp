@@ -2832,6 +2832,11 @@ lru-cache@^5.1.1:
   dependencies:
     yallist "^3.0.2"
 
+material-ui-confirm@3.0.18:
+  version "3.0.18"
+  resolved "https://registry.yarnpkg.com/material-ui-confirm/-/material-ui-confirm-3.0.18.tgz#4ce12f7d03c1a15f402cd723f6cbf8d5985bb82b"
+  integrity sha512-EzVdPVKDJTfDDTtzCQm2P5F/UznsIhSa6I2DHZCOhGUXKEBFUfrGXK8QGXTZ1Yctresz/s1HmYNy04IMJNF1Hw==
+
 math-intrinsics@^1.0.0, math-intrinsics@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/math-intrinsics/-/math-intrinsics-1.1.0.tgz#a0dd74be81e2aa5c2f27e65ce283605ee4e2b7f9"

@@ -4,6 +4,7 @@ import "@fontsource/roboto/latin-500.css";
 import "@fontsource/roboto/latin-700.css";
 
 import CssBaseLine from "@mui/material/CssBaseline";
+import { ConfirmProvider } from "material-ui-confirm";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
@@ -32,11 +33,13 @@ const theme = createTheme({
 
 function App() {
     return (
-        <BrowserRouter>
-            <QueryParamProvider adapter={ReactRouter6Adapter}>
-                <AppRoutes />
-            </QueryParamProvider>
-        </BrowserRouter>
+        <ConfirmProvider>
+            <BrowserRouter>
+                <QueryParamProvider adapter={ReactRouter6Adapter}>
+                    <AppRoutes />
+                </QueryParamProvider>
+            </BrowserRouter>
+        </ConfirmProvider>
     );
 }
 

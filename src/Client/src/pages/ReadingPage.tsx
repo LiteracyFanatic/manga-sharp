@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useKey } from "react-use";
 
-import { ChapterGetResponse, useApi, useChapter } from "../Api";
+import { ChapterGetResponse, useChapter, useSetBookmark } from "../Api";
 import ReadingPageAppBar from "../components/ReadingPageAppBar";
 import ReadingPageOverlay from "../components/ReadingPageOverlay";
 import ReadingPageStepper from "../components/ReadingPageStepper";
@@ -15,7 +15,7 @@ export default function ReadingPage() {
     const [pageName, setPageName] = useSearchParam("page");
     const [innerHeight, setInnerHeight] = useState(window.innerHeight);
     const navigate = useNavigate();
-    const { setBookmark } = useApi();
+    const setBookmark = useSetBookmark();
 
     const chapter = useChapter(chapterId || "");
     const currentPageIndex = chapter.data ? chapter.data.Pages.findIndex(page => page.Name === pageName) : -1;
@@ -28,7 +28,7 @@ export default function ReadingPage() {
                 setPageName("001");
             }
             if (currentPageIndex >= 0) {
-                setBookmark(chapter.data.MangaId, {
+                setBookmark.trigger(chapter.data.MangaId, {
                     ChapterId: chapter.data.ChapterId,
                     PageId: chapter.data.Pages[currentPageIndex].Id
                 });
@@ -38,7 +38,7 @@ export default function ReadingPage() {
 
     useEffect(() => {
         if (chapter.data?.Direction === "Vertical") {
-            setBookmark(chapter.data.MangaId, {
+            setBookmark.trigger(chapter.data.MangaId, {
                 ChapterId: chapter.data.ChapterId,
                 PageId: null
             });

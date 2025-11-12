@@ -47,6 +47,7 @@ let getCliApp () =
 
     builder.ConfigureServices(fun services ->
         services.AddMangaContext()
+        services.AddTransient<MangaService>()
         services.AddTransient<MangaRepository>()
         services.AddJsonSerializer()
 
