@@ -1,4 +1,4 @@
-import { MoreHoriz } from "@mui/icons-material";
+import { MoreHoriz } from '@mui/icons-material';
 import {
     Box,
     IconButton,
@@ -10,16 +10,22 @@ import {
     Paper,
     SxProps,
     Theme
-} from "@mui/material";
-import React from "react";
-import { Link } from "react-router-dom";
+} from '@mui/material';
+import { useConfirm } from 'material-ui-confirm';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Virtuoso } from 'react-virtuoso';
 
-import { MangaGetResponse, useArchiveManga, useDeleteManga, useSetMangaDirection, useUnarchiveManga } from "../Api";
-import { useConfirm } from "material-ui-confirm";
-import { Virtuoso } from "react-virtuoso";
+import {
+    MangaGetResponse,
+    useArchiveManga,
+    useDeleteManga,
+    useSetMangaDirection,
+    useUnarchiveManga
+} from '../Api';
 
 interface MangaListItemProps {
-    manga: Fuzzysort.KeysResult<MangaGetResponse>
+    manga: Fuzzysort.KeysResult<MangaGetResponse>;
 }
 
 function MangaListItem(props: MangaListItemProps) {
@@ -30,30 +36,30 @@ function MangaListItem(props: MangaListItemProps) {
     const unarchiveManga = useUnarchiveManga();
     const setMangaDirection = useSetMangaDirection();
 
-    const disabled = deleteManga.loading || archiveManga.loading || unarchiveManga.loading || setMangaDirection.loading;
+    const disabled = deleteManga.loading || archiveManga.loading || unarchiveManga.loading || setMangaDirection.isMutating;
 
     async function handleDelete() {
         setAnchorEl(null);
-        await confirm({ title: "Delete manga?", description: "This will permanently remove the manga and all chapters." });
+        await confirm({ title: 'Delete manga?', description: 'This will permanently remove the manga and all chapters.' });
         await deleteManga.trigger(props.manga.obj.Id);
     }
 
     async function handleArchive() {
         setAnchorEl(null);
-        await confirm({ title: "Archive manga?", description: "All downloaded chapters will be marked archived." });
+        await confirm({ title: 'Archive manga?', description: 'All downloaded chapters will be marked archived.' });
         await archiveManga.trigger(props.manga.obj.Id);
     }
 
     async function handleUnarchive() {
         setAnchorEl(null);
-        await confirm({ title: "Unarchive manga?", description: "All archived chapters will be restored to downloaded." });
+        await confirm({ title: 'Unarchive manga?', description: 'All archived chapters will be restored to downloaded.' });
         await unarchiveManga.trigger(props.manga.obj.Id);
     }
 
     async function handleDirectionChange() {
         setAnchorEl(null);
-        const nextDirection = props.manga.obj.Direction === "Horizontal" ? "Vertical" : "Horizontal";
-        await setMangaDirection.trigger(props.manga.obj.Id, nextDirection);
+        const nextDirection = props.manga.obj.Direction === 'Horizontal' ? 'Vertical' : 'Horizontal';
+        await setMangaDirection.trigger({ MangaId: props.manga.obj.Id, Direction: nextDirection });
     }
 
     const highlightedTitle = props.manga[0].highlight((m, i) => (
@@ -69,31 +75,33 @@ function MangaListItem(props: MangaListItemProps) {
             {m}
         </Box>
     ));
-    const title = highlightedTitle?.length ? highlightedTitle : props.manga.obj.Title;
+    const title = highlightedTitle.length ? highlightedTitle : props.manga.obj.Title;
 
-    let location = "";
+    let location = '';
     if (props.manga.obj.NumberOfChapters.Downloaded > 0) {
-        location = `${props.manga.obj.ChapterIndex + 1}/${props.manga.obj.NumberOfChapters.Downloaded}`
-    } else if (props.manga.obj.NumberOfChapters.Archived > 0) {
-        location = "archived";
-    } else if (props.manga.obj.NumberOfChapters.NotDownloaded > 0) {
-        location = "pending download";
+        location = `${(props.manga.obj.ChapterIndex + 1).toString()}/${props.manga.obj.NumberOfChapters.Downloaded.toString()}`;
+    }
+    else if (props.manga.obj.NumberOfChapters.Archived > 0) {
+        location = 'archived';
+    }
+    else if (props.manga.obj.NumberOfChapters.NotDownloaded > 0) {
+        location = 'pending download';
     }
 
     const secondaryText = `(${location}) ${props.manga.obj.Direction} ${props.manga.obj.Updated.toLocaleDateString()}`;
 
     return (
-        <Box
-        >
+        <Box>
             <ListItem
                 disablePadding
-                secondaryAction={
+                secondaryAction={(
                     <IconButton
                         edge="end"
                         onClick={(e: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(e.currentTarget)}
                     >
                         <MoreHoriz />
-                    </IconButton>}
+                    </IconButton>
+                )}
             >
                 <ListItemButton
                     disabled={!props.manga.obj.NumberOfChapters.Downloaded}
@@ -133,8 +141,8 @@ function MangaListItem(props: MangaListItemProps) {
 }
 
 interface MangaListProps {
-    manga: Fuzzysort.KeysResult<MangaGetResponse>[]
-    sx?: SxProps<Theme>
+    manga: Fuzzysort.KeysResult<MangaGetResponse>[];
+    sx?: SxProps<Theme>;
 }
 
 export default function MangaList(props: MangaListProps) {
@@ -144,7 +152,6 @@ export default function MangaList(props: MangaListProps) {
                 useWindowScroll
                 totalCount={props.manga.length}
                 itemContent={i => <MangaListItem manga={props.manga[i]} />}
-
             />
         </Paper>
     );

@@ -1,7 +1,7 @@
-import { Slide, useScrollTrigger } from "@mui/material";
+import { Slide, useScrollTrigger } from '@mui/material';
 
 interface HideOnScrollProps {
-    children: React.ReactElement
+    children: React.ReactElement;
 }
 
 export default function HideOnScroll(props: HideOnScrollProps) {

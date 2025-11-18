@@ -1,18 +1,18 @@
-import { ChevronLeft, ChevronRight } from "@mui/icons-material";
+import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import {
     Box,
     Stack,
     SxProps,
     Theme,
     Typography
-} from "@mui/material";
+} from '@mui/material';
 
 interface ReadingPageOverlayProps {
-    onClickPrevious?: () => void
-    onClickNext?: () => void
-    previousDisabled?: boolean
-    nextDisabled?: boolean
-    sx?: SxProps<Theme>
+    onClickPrevious?: () => void;
+    onClickNext?: () => void;
+    previousDisabled?: boolean;
+    nextDisabled?: boolean;
+    sx?: SxProps<Theme>;
 }
 
 export default function ReadingPageOverlay(props: ReadingPageOverlayProps) {
@@ -24,22 +24,22 @@ export default function ReadingPageOverlay(props: ReadingPageOverlayProps) {
             <Box
                 onClick={props.previousDisabled ? undefined : props.onClickPrevious}
                 sx={{
-                    height: "100%",
-                    width: "calc(100%/3)",
-                    cursor: props.previousDisabled ? undefined : "pointer",
-                    opacity: 0,
-                    "@media (hover: hover) and (pointer: fine)": {
-                        "&:hover": {
+                    'height': '100%',
+                    'width': 'calc(100%/3)',
+                    'cursor': props.previousDisabled ? undefined : 'pointer',
+                    'opacity': 0,
+                    '@media (hover: hover) and (pointer: fine)': {
+                        '&:hover': {
                             opacity: 1
                         }
                     },
-                    transition: "opacity 0.5s",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "start",
-                    color: theme => props.previousDisabled ? theme.palette.grey[700] : undefined,
-                    WebkitTapHighlightColor: "transparent"
+                    'transition': 'opacity 0.5s',
+                    'display': 'flex',
+                    'flexDirection': 'column',
+                    'justifyContent': 'center',
+                    'alignItems': 'start',
+                    'color': theme => props.previousDisabled ? theme.palette.grey[700] : undefined,
+                    'WebkitTapHighlightColor': 'transparent'
                 }}
             >
                 <Box
@@ -55,7 +55,7 @@ export default function ReadingPageOverlay(props: ReadingPageOverlayProps) {
                     <Typography
                         textAlign="center"
                         sx={{
-                            marginY: "-0.5rem"
+                            marginY: '-0.5rem'
                         }}
                     >
                         PREV
@@ -64,29 +64,29 @@ export default function ReadingPageOverlay(props: ReadingPageOverlayProps) {
             </Box>
             <Box
                 sx={{
-                    height: "100%",
+                    height: '100%',
                     flexGrow: 1
                 }}
             />
             <Box
                 onClick={props.nextDisabled ? undefined : props.onClickNext}
                 sx={{
-                    height: "100%",
-                    width: "calc(100%/3)",
-                    cursor: "pointer",
-                    opacity: 0,
-                    "@media (hover: hover) and (pointer: fine)": {
-                        "&:hover": {
+                    'height': '100%',
+                    'width': 'calc(100%/3)',
+                    'cursor': 'pointer',
+                    'opacity': 0,
+                    '@media (hover: hover) and (pointer: fine)': {
+                        '&:hover': {
                             opacity: 1
                         }
                     },
-                    transition: "opacity 0.5s",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "end",
-                    color: theme => props.nextDisabled ? theme.palette.grey[700] : undefined,
-                    WebkitTapHighlightColor: "transparent"
+                    'transition': 'opacity 0.5s',
+                    'display': 'flex',
+                    'flexDirection': 'column',
+                    'justifyContent': 'center',
+                    'alignItems': 'end',
+                    'color': theme => props.nextDisabled ? theme.palette.grey[700] : undefined,
+                    'WebkitTapHighlightColor': 'transparent'
                 }}
             >
                 <Box
@@ -102,7 +102,7 @@ export default function ReadingPageOverlay(props: ReadingPageOverlayProps) {
                     <Typography
                         textAlign="center"
                         sx={{
-                            marginY: "-0.5rem"
+                            marginY: '-0.5rem'
                         }}
                     >
                         NEXT
@@ -112,4 +112,3 @@ export default function ReadingPageOverlay(props: ReadingPageOverlayProps) {
         </Stack>
     );
 }
-

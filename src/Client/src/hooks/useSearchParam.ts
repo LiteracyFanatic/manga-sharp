@@ -1,8 +1,8 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from 'react-router-dom';
 
 export function useSearchParam<T extends string>(paramName: string): [T | null, (value: T | null) => void];
 
-export function useSearchParam<T extends string>(paramName: string, defaultValue: string): [T , (value: T) => void];
+export function useSearchParam<T extends string>(paramName: string, defaultValue: string): [T, (value: T) => void];
 
 export function useSearchParam<T extends string>(paramName: string, defaultValue?: T) {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -17,16 +17,18 @@ export function useSearchParam<T extends string>(paramName: string, defaultValue
         };
 
         return [searchParam, setSearchParam];
-    } else {
+    }
+    else {
         const setSearchParam = (value: T | null) => {
             if (value) {
                 setSearchParams({
                     ...Object.fromEntries(searchParams.entries()),
                     [paramName]: value
                 });
-            } else {
+            }
+            else {
                 setSearchParams(
-                    Array.from(searchParams.entries()).filter(([k, v]) => k !== paramName)
+                    Array.from(searchParams.entries()).filter(([k, _]) => k !== paramName)
                 );
             }
         };

@@ -1,28 +1,17 @@
 import {
     LinearProgress,
     Step,
-    StepConnectorProps,
-    StepIconProps,
-    StepLabel,
     Stepper,
     SxProps,
     Theme
-} from "@mui/material";
-import { useEffect,useState } from "react";
-
-function ReadingPageStepperConnector(props: StepConnectorProps) {
-    return null;
-}
-
-function ReadingPageStepperStepIcon(props: StepIconProps) {
-    return null;
-}
+} from '@mui/material';
+import { useEffect, useState } from 'react';
 
 interface ReadingPageStepperProps {
-    currentPage: number
-    numberOfPages: number
-    onChangeStep?: (step: number) => void
-    sx?: SxProps<Theme>
+    currentPage: number;
+    numberOfPages: number;
+    onChangeStep?: (step: number) => void;
+    sx?: SxProps<Theme>;
 }
 
 export default function ReadingPageStepper(props: ReadingPageStepperProps) {
@@ -30,8 +19,8 @@ export default function ReadingPageStepper(props: ReadingPageStepperProps) {
 
     useEffect(() => {
         const handler = () => setInnerWidth(window.innerHeight);
-        window.addEventListener("resize", handler);
-        return () => window.removeEventListener("resize", handler);
+        window.addEventListener('resize', handler);
+        return () => window.removeEventListener('resize', handler);
     }, []);
 
     const stepWidth = (innerWidth - 2 * (props.numberOfPages - 1)) / props.numberOfPages;
@@ -50,18 +39,19 @@ export default function ReadingPageStepper(props: ReadingPageStepperProps) {
                 sx={props.sx}
             />
         );
-    } else {
+    }
+    else {
         return (
             <Stepper
                 alternativeLabel
                 activeStep={props.currentPage}
-                connector={<ReadingPageStepperConnector />}
+                connector={null}
                 sx={[
                     {
-                        height: "4px",
-                        gap: "2px"
+                        height: '4px',
+                        gap: '2px'
                     },
-                    ...(Array.isArray(props.sx) ? props.sx : [props.sx])
+                    ...(Array.isArray(props.sx) ? props.sx : [props.sx] as const)
                 ]}
             >
                 {Array.from(Array(props.numberOfPages).keys()).map(i => (
@@ -70,17 +60,13 @@ export default function ReadingPageStepper(props: ReadingPageStepperProps) {
                         onClick={() => onChangeStep(i)}
                         sx={{
                             paddingX: 0,
-                            height: "100%",
+                            height: '100%',
                             backgroundColor: theme => i <= props.currentPage ? theme.palette.primary.main : theme.palette.grey[800],
-                            cursor: "pointer"
+                            cursor: 'pointer'
                         }}
-                    >
-                        <StepLabel StepIconComponent={ReadingPageStepperStepIcon} />
-                    </Step>
+                    />
                 ))}
             </Stepper>
         );
     }
-
 }
-

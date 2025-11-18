@@ -1,14 +1,14 @@
-import { CircularProgress } from "@mui/material";
-import { Image } from "mui-image";
-import React, { useState } from "react";
-import { useTimeoutFn } from "react-use";
+import { CircularProgress } from '@mui/material';
+import { Image } from 'mui-image';
+import React, { useState } from 'react';
+import { useTimeoutFn } from 'react-use';
 
 interface LazyImageProps {
-    src: string
-    width: number
-    height: number
-    wrapperStyle?: React.CSSProperties
-    fit?: React.CSSProperties["objectFit"]
+    src: string;
+    width: number;
+    height: number;
+    wrapperStyle?: React.CSSProperties;
+    fit?: React.CSSProperties['objectFit'];
 }
 
 export default function LazyImage(props: LazyImageProps) {
@@ -27,8 +27,6 @@ export default function LazyImage(props: LazyImageProps) {
             wrapperStyle={props.wrapperStyle}
             fit={props.fit}
             showLoading={isCached ? undefined : <CircularProgress />}
-            // @ts-ignore
-            draggable={false}
             duration={isCached ? 0 : undefined}
             onLoad={() => setIsLoaded(true)}
             width={props.width}
@@ -36,4 +34,3 @@ export default function LazyImage(props: LazyImageProps) {
         />
     );
 }
-

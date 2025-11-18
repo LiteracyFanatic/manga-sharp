@@ -1,62 +1,71 @@
-import { Box, CircularProgress, Container, Typography } from "@mui/material";
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useKey } from "react-use";
+import { Box, CircularProgress, Container, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { useKey } from 'react-use';
 
-import { ChapterGetResponse, useChapter, useSetBookmark } from "../Api";
-import ReadingPageAppBar from "../components/ReadingPageAppBar";
-import ReadingPageOverlay from "../components/ReadingPageOverlay";
-import ReadingPageStepper from "../components/ReadingPageStepper";
-import { useSearchParam } from "../hooks/useSearchParam";
-import LazyImage from "./LazyImage";
+import { ChapterGetResponse, useChapter, useSetBookmark } from '../Api';
+import ReadingPageAppBar from '../components/ReadingPageAppBar';
+import ReadingPageOverlay from '../components/ReadingPageOverlay';
+import ReadingPageStepper from '../components/ReadingPageStepper';
+import { useSearchParam } from '../hooks/useSearchParam';
+
+import LazyImage from './LazyImage';
 
 export default function ReadingPage() {
     const { chapterId } = useParams();
-    const [pageName, setPageName] = useSearchParam("page");
+    const [pageName, setPageName] = useSearchParam('page');
     const [innerHeight, setInnerHeight] = useState(window.innerHeight);
     const navigate = useNavigate();
     const setBookmark = useSetBookmark();
 
-    const chapter = useChapter(chapterId || "");
+    const chapter = useChapter(chapterId || '');
     const currentPageIndex = chapter.data ? chapter.data.Pages.findIndex(page => page.Name === pageName) : -1;
 
     const progressBarHeight = 4;
 
     useEffect(() => {
-        if (chapter.data?.Direction === "Horizontal") {
-            if (!pageName) {
-                setPageName("001");
-            }
+        if (chapter.data?.Direction === 'Horizontal' && !pageName) {
+            console.log('Setting default page name to 001');
+            setPageName('001');
+        }
+    }, [chapter.data?.Direction, pageName, setPageName]);
+
+    useEffect(() => {
+        if (chapter.data?.Direction === 'Horizontal') {
             if (currentPageIndex >= 0) {
-                setBookmark.trigger(chapter.data.MangaId, {
+                void setBookmark.trigger({
+                    MangaId: chapter.data.MangaId,
                     ChapterId: chapter.data.ChapterId,
                     PageId: chapter.data.Pages[currentPageIndex].Id
                 });
             }
         }
-    }, [chapter.data, pageName, setPageName, currentPageIndex]);
+    }, [chapter.data, currentPageIndex, setBookmark]);
 
     useEffect(() => {
-        if (chapter.data?.Direction === "Vertical") {
-            setBookmark.trigger(chapter.data.MangaId, {
+        if (chapter.data?.Direction === 'Vertical') {
+            void setBookmark.trigger({
+                MangaId: chapter.data.MangaId,
                 ChapterId: chapter.data.ChapterId,
                 PageId: null
             });
         }
-    }, [chapter.data]);
+    }, [chapter.data, setBookmark]);
 
     function onClickPrevious(chapter: ChapterGetResponse) {
-        if (chapter.Direction === "Horizontal" && currentPageIndex > 0) {
+        if (chapter.Direction === 'Horizontal' && currentPageIndex > 0) {
             setPageName(chapter.Pages[currentPageIndex - 1].Name);
-        } else if (chapter.PreviousChapterUrl) {
+        }
+        else if (chapter.PreviousChapterUrl) {
             navigate(chapter.PreviousChapterUrl);
         }
     }
 
     function onClickNext(chapter: ChapterGetResponse) {
-        if (chapter.Direction === "Horizontal" && currentPageIndex >= 0 && currentPageIndex < chapter.Pages.length - 1) {
+        if (chapter.Direction === 'Horizontal' && currentPageIndex >= 0 && currentPageIndex < chapter.Pages.length - 1) {
             setPageName(chapter.Pages[currentPageIndex + 1].Name);
-        } else if (chapter.NextChapterUrl) {
+        }
+        else if (chapter.NextChapterUrl) {
             navigate(chapter.NextChapterUrl);
         }
     }
@@ -67,12 +76,12 @@ export default function ReadingPage() {
         }
     }
 
-    useKey(e => e.key === "ArrowLeft",
-        e => chapter.data && onClickPrevious(chapter.data),
+    useKey(e => e.key === 'ArrowLeft',
+        () => chapter.data && onClickPrevious(chapter.data),
         undefined,
         [chapter]);
-    useKey(e => e.key === "ArrowRight" || e.key === " ",
-        e => chapter.data && onClickNext(chapter.data),
+    useKey(e => e.key === 'ArrowRight' || e.key === ' ',
+        () => chapter.data && onClickNext(chapter.data),
         undefined,
         [chapter]);
 
@@ -96,32 +105,34 @@ export default function ReadingPage() {
 
     useEffect(() => {
         const handler = () => setInnerHeight(window.innerHeight);
-        window.addEventListener("resize", handler);
-        return () => window.removeEventListener("resize", handler);
+        window.addEventListener('resize', handler);
+        return () => window.removeEventListener('resize', handler);
     }, []);
 
     function getContent() {
         if (chapter.data) {
             const chapterData = chapter.data;
-            if (chapterData.DownloadStatus === "Archived") {
+            if (chapterData.DownloadStatus === 'Archived') {
                 return (
                     <Typography>
-                        {chapterData.ChapterTitle ? `Chapter ${chapterData.ChapterTitle} is archived.` : "Chapter is archived."}
+                        {chapterData.ChapterTitle ? `Chapter ${chapterData.ChapterTitle} is archived.` : 'Chapter is archived.'}
                     </Typography>
                 );
-            } else {
+            }
+            else {
                 const getWrapperStyles = (i: number): React.CSSProperties => {
-                    if (chapterData.Direction === "Horizontal") {
+                    if (chapterData.Direction === 'Horizontal') {
                         return {
                             // Hide other images by setting width to 0 so that CSS animation doesn't trigger when they are revealed
-                            width: i === currentPageIndex ? "auto" : 0,
+                            width: i === currentPageIndex ? 'auto' : 0,
                             maxHeight: i === currentPageIndex ? innerHeight - progressBarHeight : 0
                         };
-                    } else {
+                    }
+                    else {
                         return {
-                            height: "auto",
-                            width: "100%",
-                            maxWidth: "800px"
+                            height: 'auto',
+                            width: '100%',
+                            maxWidth: '800px'
                         };
                     }
                 };
@@ -135,30 +146,30 @@ export default function ReadingPage() {
                         />
                         <Box
                             sx={{
-                                width: "100%",
-                                maxWidth: "100vw",
+                                width: '100%',
+                                maxWidth: '100vw',
                                 height: innerHeight,
-                                userSelect: "none",
-                                display: "flex",
-                                justifyContent: chapterData.Direction === "Horizontal" ? "center" : "start",
-                                flexDirection: "column"
+                                userSelect: 'none',
+                                display: 'flex',
+                                justifyContent: chapterData.Direction === 'Horizontal' ? 'center' : 'start',
+                                flexDirection: 'column'
                             }}
                         >
                             <Box
                                 sx={{
-                                    width: "100%",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center"
+                                    width: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center'
                                 }}
                             >
                                 <Box
                                     sx={{
-                                        position: "fixed",
+                                        position: 'fixed',
                                         top: theme => theme.mixins.toolbar.minHeight,
                                         left: 0,
                                         right: 0,
-                                        bottom: chapterData.Direction === "Horizontal" ? progressBarHeight : 0,
+                                        bottom: chapterData.Direction === 'Horizontal' ? progressBarHeight : 0,
                                         zIndex: 2
                                     }}
                                 >
@@ -168,8 +179,8 @@ export default function ReadingPage() {
                                         previousDisabled={!chapterData.PreviousChapterUrl && currentPageIndex <= 0}
                                         nextDisabled={!chapterData.NextChapterUrl && (currentPageIndex === -1 || currentPageIndex === chapterData.Pages.length - 1)}
                                         sx={{
-                                            width: "100%",
-                                            height: "100%"
+                                            width: '100%',
+                                            height: '100%'
                                         }}
                                     />
                                 </Box>
@@ -178,33 +189,35 @@ export default function ReadingPage() {
                                         key={page.Id}
                                         src={`/pages/${page.Id}`}
                                         wrapperStyle={getWrapperStyles(i)}
-                                        fit={chapterData.Direction === "Horizontal" ? "contain" : "cover"}
+                                        fit={chapterData.Direction === 'Horizontal' ? 'contain' : 'cover'}
                                         width={page.Width}
                                         height={page.Height}
                                     />
                                 ))}
                             </Box>
-                            {chapterData.Direction === "Horizontal" &&
+                            {chapterData.Direction === 'Horizontal' && (
                                 <ReadingPageStepper
                                     currentPage={currentPageIndex}
                                     numberOfPages={chapterData.Pages.length}
                                     onChangeStep={onChangeStep}
                                     sx={{
-                                        width: "100%",
+                                        width: '100%',
                                         height: progressBarHeight
                                     }}
-                                />}
+                                />
+                            )}
                         </Box>
                     </>
                 );
             }
-        } else if (chapter.isValidating) {
+        }
+        else if (chapter.isValidating) {
             return (
                 <Container
                     sx={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
                         height: innerHeight
                     }}
                     maxWidth="md"
@@ -212,7 +225,8 @@ export default function ReadingPage() {
                     <CircularProgress />
                 </Container>
             );
-        } else {
+        }
+        else {
             return <Typography>Chapter not found.</Typography>;
         }
     }

@@ -1,11 +1,12 @@
-import { useAsyncFn } from "react-use";
-import useSWR, { SWRConfiguration, SWRResponse, useSWRConfig } from "swr";
-import * as z from "zod";
+import { useAsyncFn } from 'react-use';
+import useSWR, { SWRConfiguration, SWRResponse, mutate, useSWRConfig } from 'swr';
+import useSWRMutation from 'swr/mutation';
+import * as z from 'zod';
 
 type UnwrapSWR<T> = T extends SWRResponse<infer Data> ? Data : never;
-type UnwrapSWRHook<T extends (...args: any[]) => any> = UnwrapSWR<ReturnType<T>>;
+type UnwrapSWRHook<T> = T extends (...args: infer _A) => infer R ? UnwrapSWR<R> : never;
 
-const directionSchema = z.enum(["Horizontal", "Vertical"]);
+const directionSchema = z.enum(['Horizontal', 'Vertical']);
 export type Direction = z.infer<typeof directionSchema>;
 
 const mangaGetResponseSchema = z.object({
@@ -21,70 +22,76 @@ const mangaGetResponseSchema = z.object({
     }),
     ChapterIndex: z.number(),
     Direction: directionSchema,
-    SourceUrl: z.string().url(),
-    Updated: z.coerce.date(),
+    SourceUrl: z.string(),
+    Updated: z.coerce.date()
 });
 
 export type MangaGetResponse = z.infer<typeof mangaGetResponseSchema>;
 
-type DownloadStatus =
-    | "NotDownloaded"
-    | "Downloaded"
-    | "Archived"
-    | "Ignored"
+const downloadStatusSchema = z.enum(['NotDownloaded', 'Downloaded', 'Archived', 'Ignored']);
+export type DownloadStatus = z.infer<typeof downloadStatusSchema>;
 
-export interface ChapterGetResponse {
-    MangaId: string
-    Direction: Direction
-    ChapterId: string
-    ChapterTitle: string | null
-    PreviousChapterUrl: string | null
-    NextChapterUrl: string | null
-    OtherChapters: {
-        Id: string
-        Title: string
-        Url: string
-        DownloadStatus: DownloadStatus
-    }[]
-    DownloadStatus: DownloadStatus
-    Pages: {
-        Id: string
-        Name: string
-        Width: number
-        Height: number
-    }[]
-}
+const chapterGetResponseSchema = z.object({
+    MangaId: z.string(),
+    Direction: directionSchema,
+    ChapterId: z.string(),
+    ChapterTitle: z.string().nullable(),
+    PreviousChapterUrl: z.string().nullable(),
+    NextChapterUrl: z.string().nullable(),
+    OtherChapters: z.object({
+        Id: z.string(),
+        Title: z.string(),
+        Url: z.string(),
+        DownloadStatus: downloadStatusSchema
+    }).array(),
+    DownloadStatus: downloadStatusSchema,
+    Pages: z.object({
+        Id: z.string(),
+        Name: z.string(),
+        Width: z.number(),
+        Height: z.number()
+    }).array()
+});
+
+export type ChapterGetResponse = z.infer<typeof chapterGetResponseSchema>;
 
 export interface PutBookmarkRequest {
-    ChapterId: string
-    PageId: string | null
+    MangaId: string;
+    ChapterId: string;
+    PageId: string | null;
+}
+
+export interface SetMangaDirectionRequest {
+    MangaId: string;
+    Direction: Direction;
 }
 
 export async function deleteManga(mangaId: string) {
-    await fetch(`/api/manga/${mangaId}`, { method: "DELETE" });
+    await fetch(`/api/manga/${mangaId}`, { method: 'DELETE' });
 }
 
 export async function archiveManga(mangaId: string) {
-    await fetch(`/api/manga/${mangaId}/archive`, { method: "POST" });
+    await fetch(`/api/manga/${mangaId}/archive`, { method: 'POST' });
 }
 
 export async function unarchiveManga(mangaId: string) {
-    await fetch(`/api/manga/${mangaId}/unarchive`, { method: "POST" });
+    await fetch(`/api/manga/${mangaId}/unarchive`, { method: 'POST' });
 }
 
-export async function setMangaDirection(mangaId: string, direction: Direction) {
-    await fetch(`/api/manga/${mangaId}/direction`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Direction: direction })
+export async function setMangaDirection({ MangaId, ...request }: SetMangaDirectionRequest) {
+    await fetch(`/api/manga/${MangaId}/direction`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
     });
 }
 
 async function getManga() {
-    const res = await fetch("/api/manga");
+    const res = await fetch('/api/manga');
     try {
         return mangaGetResponseSchema.array().parse(await res.json());
-    } catch (e) {
+    }
+    catch (e) {
         console.error(e);
         return [];
     }
@@ -92,40 +99,40 @@ async function getManga() {
 
 async function getChapter(chapterId: string) {
     const res = await fetch(`/api/chapters/${chapterId}`);
-    return await res.json() as Promise<ChapterGetResponse>;
+    return chapterGetResponseSchema.parse(await res.json());
 }
 
-export async function setBookmark(mangaId: string, request: PutBookmarkRequest) {
-    await fetch(`/api/manga/${mangaId}/bookmark`, {
-        method: "PUT",
+export async function setBookmark({ MangaId, ...request }: PutBookmarkRequest) {
+    await fetch(`/api/manga/${MangaId}/bookmark`, {
+        method: 'PUT',
         headers: {
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify(request)
     });
 }
 
 export function useManga(config?: SWRConfiguration): SWRResponse<MangaGetResponse[], Error> {
-    return useSWR(["useManga"], getManga, config);
+    return useSWR(['useManga'], getManga, config);
 }
 
 export function useChapter(chapterId: string, config?: SWRConfiguration): SWRResponse<ChapterGetResponse, Error> {
-    return useSWR(["useChapter", chapterId], () => getChapter(chapterId), config);
+    return useSWR(['useChapter', chapterId], () => getChapter(chapterId), config);
 }
 
 export function useDeleteManga() {
     const { mutate } = useSWRConfig();
 
     const [state, trigger] = useAsyncFn(async (mangaId: string) => {
-        await mutate<UnwrapSWRHook<typeof useManga>>(["useManga"], async (current) => {
+        await mutate<UnwrapSWRHook<typeof useManga>>(['useManga'], async (current) => {
             await deleteManga(mangaId);
             return (current ?? []).filter(manga => manga.Id !== mangaId);
         }, {
             revalidate: false,
-            optimisticData: (currentData) => (currentData ?? []).filter(manga => manga.Id !== mangaId)
+            optimisticData: currentData => (currentData ?? []).filter(manga => manga.Id !== mangaId)
         });
     });
-    
+
     return { ...state, trigger };
 }
 
@@ -133,7 +140,7 @@ export function useArchiveManga() {
     const { mutate } = useSWRConfig();
 
     const [state, trigger] = useAsyncFn(async (mangaId: string) => {
-        await mutate(["useManga"], archiveManga(mangaId));
+        await mutate(['useManga'], archiveManga(mangaId));
     });
 
     return { ...state, trigger };
@@ -143,7 +150,7 @@ export function useUnarchiveManga() {
     const { mutate } = useSWRConfig();
 
     const [state, trigger] = useAsyncFn(async (mangaId: string) => {
-        await mutate(["useManga"], unarchiveManga(mangaId));
+        await mutate(['useManga'], unarchiveManga(mangaId));
     });
 
     return { ...state, trigger };
@@ -152,38 +159,32 @@ export function useUnarchiveManga() {
 export function useSetMangaDirection() {
     const { mutate } = useSWRConfig();
 
-    const [state, trigger] = useAsyncFn(async (mangaId: string, direction: Direction) => {
-        await mutate<UnwrapSWRHook<typeof useManga>>(["useManga"], async (current) => {
-            await setMangaDirection(mangaId, direction);
-            return (current ?? []).map(manga => {
-                if (manga.Id === mangaId) {
-                    return { ...manga, Direction: direction };
+    return useSWRMutation(['useSetMangaDirection'], async (_, { arg }: { arg: SetMangaDirectionRequest }) => {
+        await mutate<UnwrapSWRHook<typeof useManga>>(['useManga'], async (currentData) => {
+            await setMangaDirection(arg);
+            return (currentData ?? []).map((manga) => {
+                if (manga.Id === arg.MangaId) {
+                    return { ...manga, Direction: arg.Direction };
                 }
                 return manga;
             });
         }, {
-            revalidate: false,
-            optimisticData: (currentData) => (currentData ?? []).map(manga => {
-                if (manga.Id === mangaId) {
-                    return { ...manga, Direction: direction };
-                }
-                return manga;
-            })
+            optimisticData: (currentData) => {
+                console.log('optimisticData', currentData);
+                return (currentData ?? []).map((manga) => {
+                    if (manga.Id === arg.MangaId) {
+                        return { ...manga, Direction: arg.Direction };
+                    }
+                    return manga;
+                });
+            }
         });
     });
-
-    return { ...state, trigger };
 }
 
 export function useSetBookmark() {
-    const { mutate } = useSWRConfig();
-
-    const [state, trigger] = useAsyncFn(async (mangaId: string, request: PutBookmarkRequest) => {
-        await mutate(["useManga"], async (current) => {
-            await setBookmark(mangaId, request);
-            return current;
-        });
+    return useSWRMutation(['useSetBookmark'], async (_, { arg }: { arg: PutBookmarkRequest }) => {
+        await setBookmark(arg);
+        await mutate(['useManga'], undefined, { revalidate: true });
     });
-
-    return { ...state, trigger };
 }
