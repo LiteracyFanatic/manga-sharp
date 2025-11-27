@@ -12,6 +12,7 @@ import {
     Theme
 } from '@mui/material';
 import { useConfirm } from 'material-ui-confirm';
+import { useSnackbar } from 'notistack';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
@@ -19,6 +20,7 @@ import { Virtuoso } from 'react-virtuoso';
 import {
     MangaGetResponse,
     useArchiveManga,
+    useCheckUpdate,
     useDeleteManga,
     useSetMangaDirection,
     useUnarchiveManga
@@ -35,8 +37,10 @@ function MangaListItem(props: MangaListItemProps) {
     const archiveManga = useArchiveManga();
     const unarchiveManga = useUnarchiveManga();
     const setMangaDirection = useSetMangaDirection();
+    const checkUpdate = useCheckUpdate();
+    const { enqueueSnackbar } = useSnackbar();
 
-    const disabled = deleteManga.loading || archiveManga.loading || unarchiveManga.loading || setMangaDirection.isMutating;
+    const disabled = deleteManga.loading || archiveManga.loading || unarchiveManga.loading || setMangaDirection.isMutating || checkUpdate.isMutating;
 
     async function handleDelete() {
         setAnchorEl(null);
@@ -60,6 +64,23 @@ function MangaListItem(props: MangaListItemProps) {
         setAnchorEl(null);
         const nextDirection = props.manga.obj.Direction === 'Horizontal' ? 'Vertical' : 'Horizontal';
         await setMangaDirection.trigger({ MangaId: props.manga.obj.Id, Direction: nextDirection });
+    }
+
+    async function handleCheckUpdate() {
+        setAnchorEl(null);
+        try {
+            const result = await checkUpdate.trigger(props.manga.obj.Id);
+            if (result.Count > 0) {
+                enqueueSnackbar(`${result.Count.toString()} new chapter(s) available`, { variant: 'info' });
+            }
+            else {
+                enqueueSnackbar('No updates found', { variant: 'info' });
+            }
+        }
+        catch (e) {
+            console.error(e);
+            enqueueSnackbar('Failed to check for updates', { variant: 'error' });
+        }
     }
 
     const highlightedTitle = props.manga[0].highlight((m, i) => (
@@ -135,6 +156,7 @@ function MangaListItem(props: MangaListItemProps) {
                     <MenuItem disabled={disabled} onClick={handleUnarchive}>Unarchive</MenuItem>
                 )}
                 <MenuItem disabled={disabled} onClick={handleDirectionChange}>Change Direction</MenuItem>
+                <MenuItem disabled={disabled} onClick={handleCheckUpdate}>Check for Updates</MenuItem>
             </Menu>
         </Box>
     );

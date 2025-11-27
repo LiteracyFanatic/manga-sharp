@@ -1,4 +1,4 @@
-import { Close, Search, Sort } from '@mui/icons-material';
+import { Close, Menu, Search, Sort } from '@mui/icons-material';
 import {
     AppBar,
     Box,
@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useDebounce } from 'react-use';
 
 import { MangaGetResponse } from '../Api';
+import { useDrawer } from '../hooks/useDrawer';
 
 export type SortByKey = Extract<keyof MangaGetResponse, 'Title' | 'Updated'>;
 
@@ -38,6 +39,7 @@ const sortByOptions = [
 ] as const;
 
 export default function IndexAppBar(props: IndexAppBarProps) {
+    const { openDrawer } = useDrawer();
     const [searchText, setSearchText] = useState(props.defaultSearchValue || '');
     const [searchTextDebounced, setSearchTextDebounced] = useState(searchText);
     useDebounce(
@@ -74,12 +76,31 @@ export default function IndexAppBar(props: IndexAppBarProps) {
 
     return (
         <Box>
-            <AppBar>
+            <AppBar
+                position="fixed"
+                sx={{
+                    zIndex: theme => theme.zIndex.drawer + 1
+                }}
+            >
                 <Toolbar
                     sx={{
                         justifyContent: 'space-between'
                     }}
                 >
+                    <IconButton
+                        color="inherit"
+                        edge="start"
+                        onClick={openDrawer}
+                        sx={theme => ({
+                            mr: 2,
+                            [theme.breakpoints.up('md')]: {
+                                display: 'none'
+                            }
+                        })}
+                        aria-label="open navigation menu"
+                    >
+                        <Menu />
+                    </IconButton>
                     <Box
                         sx={{
                             display: 'flex',
@@ -169,7 +190,6 @@ export default function IndexAppBar(props: IndexAppBarProps) {
                     </Box>
                 </Toolbar>
             </AppBar>
-            <Toolbar />
         </Box>
     );
 }

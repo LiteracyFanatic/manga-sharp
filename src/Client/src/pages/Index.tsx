@@ -1,5 +1,7 @@
-import { CircularProgress, Container, Typography } from '@mui/material';
+import { Add } from '@mui/icons-material';
+import { CircularProgress, Container, Fab, Toolbar, Typography } from '@mui/material';
 import fuzzysort from 'fuzzysort';
+import { useState } from 'react';
 import {
     QueryParamConfig,
     StringParam,
@@ -9,6 +11,7 @@ import {
 } from 'use-query-params';
 
 import { MangaGetResponse, useManga } from '../Api';
+import { AddMangaModal } from '../components/AddMangaModal';
 import IndexAppBar, { SortByKey, SortDirection } from '../components/IndexAppBar';
 
 import MangaList from './MangaList';
@@ -28,6 +31,7 @@ const sortByKeyParam = withDefault(createEnumParam<SortByKey>(['Title', 'Updated
 const sortDirectionParam = withDefault(createEnumParam<SortDirection>(['asc', 'desc']), 'asc') as QueryParamConfig<SortDirection>;
 
 export default function Index() {
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const manga = useManga();
     const [search, setSearch] = useQueryParam('search', StringParam);
     const [sortBy, setSortBy] = useQueryParam('sort_by', sortByKeyParam);
@@ -70,16 +74,27 @@ export default function Index() {
                     setSortDirection(v.direction);
                 }}
             />
+            <Toolbar />
             <Container
                 sx={{
                     display: 'flex',
                     justifyContent: 'center',
-                    marginY: 2
+                    marginY: 2,
+                    padding: 3
                 }}
                 maxWidth="md"
             >
                 {getContent()}
             </Container>
+            <Fab
+                color="primary"
+                aria-label="add"
+                sx={{ position: 'fixed', bottom: 16, right: 16 }}
+                onClick={() => setIsAddModalOpen(true)}
+            >
+                <Add />
+            </Fab>
+            <AddMangaModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
         </>
     );
 }
