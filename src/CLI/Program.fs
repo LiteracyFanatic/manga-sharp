@@ -24,6 +24,11 @@ open MangaSharp.Extractors
 open MangaSharp.Extractors.MangaDex
 open MangaSharp.Extractors.Util
 
+let configureDb (host: IHost) =
+    use scope = host.Services.CreateScope()
+    let db = scope.ServiceProvider.GetRequiredService<MangaContext>()
+    db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;") |> ignore
+
 let getCliApp () =
     // Don't use Host.CreateDefaultBuilder() because it registers a FileWatcher
     // in the current working directory which can massively affect startup time
@@ -65,16 +70,6 @@ let getCliApp () =
                     )
                 :> IAsyncPolicy<HttpResponseMessage>)
 
-        let versionInfo = {
-            Version =
-                Assembly
-                    .GetEntryAssembly()
-                    .GetCustomAttributes<AssemblyMetadataAttribute>()
-                    .First(fun a -> a.Key = "GitTag")
-                    .Value
-        }
-
-        services.AddSingleton<VersionInfo>(versionInfo)
         services.AddSingleton<PageSaver>()
         services.AddTransient<MangaDexApi>()
         services.AddTransient<IMangaExtractor, MangaDexExtractor>()
@@ -83,9 +78,13 @@ let getCliApp () =
         services.AddTransient<IMangaExtractor, Manwha18Extractor>()
         services.AddTransient<IMangaExtractor, ManyToonExtractor>()
         services.AddTransient<IMangaExtractor, WebToonExtractor>()
+        services.AddTransient<MangaDownloaderService>()
+        services.AddSingleton<DownloadManager>()
+        services.AddHostedService<DownloadWorker>()
         services.AddTransient<Application>() |> ignore)
 
     let host = builder.Build()
+    configureDb host
     let scope = host.Services.CreateScope()
     scope.ServiceProvider.GetRequiredService<Application>()
 
@@ -93,6 +92,7 @@ let read (args: ParseResults<ReadArgs>) =
     let port = args.TryGetResult(Port)
     let openInBrowser = not (args.Contains(No_Open))
     let server = WebApp.create port
+    configureDb server
 
     let manga =
         using (server.Services.CreateScope()) (fun scope ->

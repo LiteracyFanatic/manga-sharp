@@ -14,8 +14,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Util.fs" />
-    <Compile Include="ServiceCollectionExtensions.fs" />
     <Compile Include="MangaService.fs" />
+    <Compile Include="MangaDownloaderService.fs" />
+    <Compile Include="DownloadManager.fs" />
+    <Compile Include="ServiceCollectionExtensions.fs" />
     <Compile Include="Server.fs" />
     <Compile Include="Arguments.fs" />
     <Compile Include="Application.fs" />

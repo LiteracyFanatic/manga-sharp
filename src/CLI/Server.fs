@@ -20,6 +20,11 @@ open MangaSharp.CLI.Util
 open Serilog
 open Serilog.Events
 
+open Microsoft.Extensions.Logging
+open Polly
+open Polly.Extensions.Http
+open System.Net.Http
+
 module WebApp =
 
     [<CLIMutable>]
@@ -30,6 +35,12 @@ module WebApp =
 
     [<CLIMutable>]
     type PutDirectionRequest = {
+        Direction: Direction
+    }
+
+    [<CLIMutable>]
+    type PostMangaRequest = {
+        Url: string
         Direction: Direction
     }
 
@@ -86,6 +97,22 @@ module WebApp =
                 let service = ctx.GetService<MangaService>()
                 do! service.SetBookmark(mangaId, request.ChapterId, request.PageId)
                 return! Successful.NO_CONTENT next ctx
+            }
+
+    let postMangaHandler (request: PostMangaRequest) : HttpHandler =
+        fun next ctx ->
+            task {
+                let manager = ctx.GetService<DownloadManager>()
+                let! id = manager.QueueDownload(request.Url, request.Direction)
+                return! Successful.OK id next ctx
+            }
+
+    let getDownloadsHandler : HttpHandler =
+        fun next ctx ->
+            task {
+                let manager = ctx.GetService<DownloadManager>()
+                let! jobs = manager.GetJobs()
+                return! Successful.OK jobs next ctx
             }
 
     let servePage (pageId: Guid) : HttpHandler =
@@ -185,6 +212,7 @@ module WebApp =
     [<CLIMutable>]
     type ChapterGetResponse = {
         MangaId: Guid
+        MangaTitle: string
         Direction: Direction
         ChapterId: Guid
         ChapterTitle: string option
@@ -235,6 +263,7 @@ module WebApp =
 
                 let response = {
                     MangaId = chapter.MangaId
+                    MangaTitle = manga.Title
                     Direction = chapter.Manga.Direction
                     ChapterId = chapter.Id
                     ChapterTitle = Option.ofObj chapter.Title
@@ -294,6 +323,101 @@ module WebApp =
                 return! streamData true stream None None next ctx
             }
 
+    let checkUpdateHandler (mangaId: Guid) : HttpHandler =
+        fun next ctx ->
+            task {
+                let db = ctx.GetService<MangaContext>()
+                let! manga = db.Manga.FindAsync(mangaId)
+                if isNull (box manga) then
+                    return! RequestErrors.NOT_FOUND "Manga not found" next ctx
+                else
+                    let downloader = ctx.GetService<MangaDownloaderService>()
+                    let! result = downloader.CheckForUpdates(mangaId, manga.Url)
+                    match result with
+                    | Ok count ->
+                        if count > 0 then
+                            let manager = ctx.GetService<DownloadManager>()
+                            let! _ = manager.QueueUpdate(mangaId, manga.Title, manga.Url)
+                            ()
+                        return! json {| Count = count |} next ctx
+                    | Error e ->
+                        return! RequestErrors.BAD_REQUEST e next ctx
+            }
+
+    let checkAllUpdatesHandler : HttpHandler =
+        fun next ctx ->
+            task {
+                let db = ctx.GetService<MangaContext>()
+                let! allManga =
+                    db.Manga
+                        .AsNoTracking()
+                        .OrderBy(fun m -> m.Title)
+                        .Select(fun m -> {| Id = m.Id; Title = m.Title; Url = m.Url |})
+                        .ToListAsync()
+
+                // Load existing update jobs once so we can reuse them
+                let! existingJobs =
+                    db.DownloadJobs
+                        .AsNoTracking()
+                        .Where(fun j -> j.Type = JobType.UpdateManga)
+                        .ToListAsync()
+
+                let manager = ctx.GetService<DownloadManager>()
+
+                // For each manga, either reuse an existing job or enqueue a new one
+                for m in allManga do
+                    let existingJob =
+                        existingJobs
+                        |> Seq.tryFind (fun j ->
+                            j.MangaId.HasValue
+                            && j.MangaId.Value = m.Id
+                            && j.Status <> JobStatus.Completed
+                            && j.Status <> JobStatus.Canceled
+                            && j.Status <> JobStatus.Failed)
+
+                    match existingJob with
+                    | Some job ->
+                        // Refresh existing job state instead of creating a duplicate
+                        do! manager.UpdateStatus(job.Id, JobStatus.Pending, None)
+                    | None ->
+                        let! _ = manager.QueueUpdate(m.Id, m.Title, m.Url)
+                        ()
+
+                return! Successful.NO_CONTENT next ctx
+            }
+
+    let clearCompletedDownloadsHandler : HttpHandler =
+        fun next ctx ->
+            task {
+                let manager = ctx.GetService<DownloadManager>()
+                do! manager.ClearCompleted()
+                return! Successful.NO_CONTENT next ctx
+            }
+
+    let moveJobTopHandler (jobId: Guid) : HttpHandler =
+        fun next ctx ->
+            task {
+                let manager = ctx.GetService<DownloadManager>()
+                do! manager.MoveToTop(jobId)
+                return! Successful.NO_CONTENT next ctx
+            }
+
+    let moveJobBottomHandler (jobId: Guid) : HttpHandler =
+        fun next ctx ->
+            task {
+                let manager = ctx.GetService<DownloadManager>()
+                do! manager.MoveToBottom(jobId)
+                return! Successful.NO_CONTENT next ctx
+            }
+
+    let cancelJobHandler (jobId: Guid) : HttpHandler =
+        fun next ctx ->
+            task {
+                let manager = ctx.GetService<DownloadManager>()
+                do! manager.CancelJob(jobId)
+                return! Successful.NO_CONTENT next ctx
+            }
+
     let endpoints = [
         GET [
             routef "/pages/%O" (fun id ->
@@ -301,17 +425,28 @@ module WebApp =
                 >=> servePage id)
         ]
         subRoute "/api" [
-            GET [ route "/manga" getMangaHandler; routef "/chapters/%O" getChapterHandler ]
+            GET [ 
+                route "/manga" getMangaHandler
+                routef "/chapters/%O" getChapterHandler 
+                route "/downloads" getDownloadsHandler
+            ]
             PUT [
                 routef "/manga/%O/bookmark" (putBookmarkHandler >> bindJson<PutBookmarkRequest>)
                 routef "/manga/%O/direction" (putDirectionHandler >> bindJson<PutDirectionRequest>)
             ]
             POST [
+                route "/manga" (bindJson<PostMangaRequest> postMangaHandler)
                 routef "/manga/%O/archive" (fun id -> archiveMangaHandler id)
                 routef "/manga/%O/unarchive" (fun id -> unarchiveMangaHandler id)
+                routef "/manga/%O/check-update" checkUpdateHandler
+                route "/manga/check-updates" checkAllUpdatesHandler
+                routef "/jobs/%O/move-top" moveJobTopHandler
+                routef "/jobs/%O/move-bottom" moveJobBottomHandler
+                routef "/jobs/%O/cancel" cancelJobHandler
             ]
             DELETE [
                 routef "/manga/%O" (fun id -> deleteMangaHandler id)
+                route "/downloads" clearCompletedDownloadsHandler
             ]
         ]
         GET [ route "{*rest}" serveSpa ]
@@ -353,10 +488,22 @@ module WebApp =
                 ManifestEmbeddedFileProvider(Assembly.GetAssembly(typeof<AssemblyMarker>), "wwwroot")
 
             webHostBuilder.ConfigureServices(fun services ->
-                services.AddMangaContext()
-                services.AddTransient<MangaService>()
-                services.AddJsonSerializer()
-                services.AddSingleton<IFileProvider>(fileProvider) |> ignore)
+                services.AddGiraffe() |> ignore
+                services.AddCoreMangaServices() |> ignore
+                services.AddSingleton<IFileProvider>(fileProvider) |> ignore
+                services
+                    .AddHttpClient(fun hc -> hc.Timeout <- TimeSpan.FromSeconds(20.))
+                    .AddPolicyHandler(fun services _ ->
+                        let logger = services.GetRequiredService<ILogger<HttpClient>>()
+                        HttpPolicyExtensions
+                            .HandleTransientHttpError()
+                            .WaitAndRetryAsync(
+                                3,
+                                (fun n -> TimeSpan.FromSeconds(2. ** n)),
+                                (fun _ delay -> logger.LogError("Retrying request after {Delay}", delay))
+                            )
+                        :> IAsyncPolicy<HttpResponseMessage>) |> ignore
+                )
 
             webHostBuilder.Configure(fun app ->
                 app.UseStaticFiles(StaticFileOptions(FileProvider = fileProvider, RequestPath = ""))

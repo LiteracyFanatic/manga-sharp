@@ -34,22 +34,9 @@ type Application
         extractors: IEnumerable<IMangaExtractor>,
         jsonSerializer: Json.ISerializer,
         logger: ILogger<Application>,
-        mangaService: MangaService
+        mangaService: MangaService,
+        downloader: MangaDownloaderService
     ) =
-
-    let ensureExtractors (urls: string list) =
-        let foundExtractors, errors =
-            List.foldBack
-                (fun url (foundExtractors, errors) ->
-                    match extractors |> Seq.tryFind (fun extractor -> extractor.IsMatch(url)) with
-                    | Some m -> m :: foundExtractors, errors
-                    | None -> foundExtractors, url :: errors)
-                urls
-                ([], [])
-
-        match errors with
-        | [] -> Ok foundExtractors
-        | _ -> Error errors
 
     let makeDirectionUrlPairs (args: DownloadArgs list) =
         let rec loop direction acc args =
@@ -133,20 +120,14 @@ type Application
         if not (args.Contains(Url)) then
             args.Raise("Argument --url is required")
 
-        let directions, urls = args.GetAllResults() |> makeDirectionUrlPairs |> List.unzip
+        let pairs = args.GetAllResults() |> makeDirectionUrlPairs
 
-        match ensureExtractors urls with
-        | Ok extractors ->
-            List.zip3 urls directions extractors
-            |> List.iter (fun (u, d, e) ->
-                let res = e.DownloadAsync(u, d) |> Async.AwaitTask |> Async.RunSynchronously
-
-                match res with
-                | Ok _ -> ()
-                | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e))
-        | Error u ->
-            logger.LogError("Could not find a provider for the following URLs: {Urls}", u)
-            exit 1
+        pairs
+        |> List.iter (fun (d, u) ->
+            let res = downloader.Download(u, d) |> Async.AwaitTask |> Async.RunSynchronously
+            match res with
+            | Ok _ -> ()
+            | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e))
 
     member this.Update(args: ParseResults<UpdateArgs>) =
         let allManga =
@@ -202,11 +183,16 @@ type Application
                 | Some extractor ->
                     let res = extractor.UpdateAsync(m.Id) |> Async.AwaitTask |> Async.RunSynchronously
 
-                    match res with
+                    let completed =
+                        match res with
+                        | Ok job -> job.Completion |> Async.AwaitTask |> Async.RunSynchronously
+                        | Error e -> Error e
+
+                    match completed with
                     | Ok _ -> ()
                     | Error e -> logger.LogError("SOMETHING WENT WRONG: {Error}", e)
 
-                    res
+                    completed
                 | None ->
                     logger.LogError("Could not find a provider for the following URL: {Url}", m.Url)
                     Ok false)
