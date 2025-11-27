@@ -6,6 +6,7 @@ import {
     Stack,
     TextField,
     Toolbar,
+    Typography,
     alpha,
     useMediaQuery,
     useTheme
@@ -29,10 +30,7 @@ export default function ReadingPageAppBar(props: ReadingPageAppBarProps) {
         <HideOnScroll>
             <AppBar
                 sx={{
-                    background: theme => ({
-                        xs: alpha(theme.palette.background.default, 0.9),
-                        lg: 'transparent'
-                    })
+                    background: alpha(theme.palette.background.default, 0.9)
                 }}
                 elevation={isLarge ? 0 : undefined}
             >
@@ -53,6 +51,17 @@ export default function ReadingPageAppBar(props: ReadingPageAppBarProps) {
                         >
                             <Home />
                         </Button>
+                        <Typography
+                            variant="subtitle1"
+                            noWrap
+                            sx={{
+                                display: { xs: 'none', sm: 'block' },
+                                maxWidth: '400px',
+                                alignSelf: 'center'
+                            }}
+                        >
+                            {props.chapter.MangaTitle}
+                        </Typography>
                         <TextField
                             size="small"
                             select

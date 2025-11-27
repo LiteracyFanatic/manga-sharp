@@ -1,4 +1,5 @@
-import { Box, CircularProgress, Container, Typography } from '@mui/material';
+import { ErrorOutline } from '@mui/icons-material';
+import { Box, Button, CircularProgress, Container, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useKey } from 'react-use';
@@ -25,7 +26,6 @@ export default function ReadingPage() {
 
     useEffect(() => {
         if (chapter.data?.Direction === 'Horizontal' && !pageName) {
-            console.log('Setting default page name to 001');
             setPageName('001');
         }
     }, [chapter.data?.Direction, pageName, setPageName]);
@@ -227,7 +227,27 @@ export default function ReadingPage() {
             );
         }
         else {
-            return <Typography>Chapter not found.</Typography>;
+            return (
+                <Container
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: innerHeight,
+                        gap: 2
+                    }}
+                    maxWidth="sm"
+                >
+                    <ErrorOutline sx={{ fontSize: 64, color: 'text.secondary' }} />
+                    <Typography variant="h5" color="text.secondary" align="center">
+                        Chapter not found
+                    </Typography>
+                    <Button variant="contained" onClick={() => navigate('/')}>
+                        Go Home
+                    </Button>
+                </Container>
+            );
         }
     }
 
