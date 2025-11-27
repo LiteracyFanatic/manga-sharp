@@ -100,6 +100,56 @@ public class Page : IEntityTypeConfiguration<Page>
     }
 }
 
+public enum JobStatus
+{
+    Pending,
+    Downloading,
+    Completed,
+    Canceled,
+    Failed
+}
+
+public enum JobType
+{
+    AddManga,
+    UpdateManga
+}
+
+public class DownloadJob : IEntityTypeConfiguration<DownloadJob>
+{
+    public Guid Id { get; set; }
+    public required JobType Type { get; set; }
+    public required JobStatus Status { get; set; }
+    public required string Url { get; set; }
+    public Guid? MangaId { get; set; }
+    public Manga? Manga { get; set; }
+    public string? Title { get; set; }
+    public string? Error { get; set; }
+    public string? ProgressChapterTitle { get; set; }
+    public int? ProgressChapterIndex { get; set; }
+    public int? ProgressTotalChapters { get; set; }
+    public int? ProgressPageIndex { get; set; }
+    public int? ProgressTotalPages { get; set; }
+    public double OrderIndex { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+
+    public void Configure(EntityTypeBuilder<DownloadJob> builder)
+    {
+        builder.Property(e => e.Type).HasConversion(new EnumToStringConverter<JobType>()).HasMaxLength(20);
+        builder.Property(e => e.Status).HasConversion(new EnumToStringConverter<JobStatus>()).HasMaxLength(20);
+        builder.Property(e => e.Url).HasMaxLength(200);
+        builder.Property(e => e.Title).HasMaxLength(1000);
+        builder.Property(e => e.Error).HasMaxLength(2000);
+        builder.Property(e => e.CreatedAt).HasDefaultValueSql("datetime()");
+        builder
+            .HasOne(e => e.Manga)
+            .WithMany()
+            .HasForeignKey(e => e.MangaId);
+    }
+}
+
 public class MangaContext : DbContext
 {
     public MangaContext()
@@ -113,6 +163,7 @@ public class MangaContext : DbContext
     public DbSet<Manga> Manga { get; set; } = null!;
     public DbSet<Chapter> Chapters { get; set; } = null!;
     public DbSet<Page> Pages { get; set; } = null!;
+    public DbSet<DownloadJob> DownloadJobs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
