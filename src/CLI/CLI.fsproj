@@ -18,6 +18,11 @@
     <Compile Include="MangaDownloaderService.fs" />
     <Compile Include="DownloadManager.fs" />
     <Compile Include="ServiceCollectionExtensions.fs" />
+    <Compile Include="Handlers\MangaEndpoints.fs" />
+    <Compile Include="Handlers\ChapterEndpoints.fs" />
+    <Compile Include="Handlers\DownloadEndpoints.fs" />
+    <Compile Include="Handlers\PageEndpoints.fs" />
+    <Compile Include="Handlers\SpaEndpoints.fs" />
     <Compile Include="Server.fs" />
     <Compile Include="Arguments.fs" />
     <Compile Include="Application.fs" />
