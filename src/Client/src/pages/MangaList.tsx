@@ -5,12 +5,14 @@ import {
     ListItem,
     ListItemButton,
     ListItemText,
+    ListSubheader,
     Menu,
     MenuItem,
     Paper,
     SxProps,
     Theme
 } from '@mui/material';
+import { formatDistanceToNow } from 'date-fns';
 import { useConfirm } from 'material-ui-confirm';
 import { useSnackbar } from 'notistack';
 import React from 'react';
@@ -25,6 +27,34 @@ import {
     useSetMangaDirection,
     useUnarchiveManga
 } from '../Api';
+
+interface DateHeaderItem {
+    type: 'header';
+    date: string;
+}
+
+interface MangaItem {
+    type: 'manga';
+    manga: Fuzzysort.KeysResult<MangaGetResponse>;
+}
+
+type GroupedMangaItem = DateHeaderItem | MangaItem;
+
+function groupMangaByDate(manga: Fuzzysort.KeysResult<MangaGetResponse>[]): GroupedMangaItem[] {
+    const items: GroupedMangaItem[] = [];
+    let currentDateKey: string | null = null;
+
+    for (const m of manga) {
+        const dateKey = formatDistanceToNow(m.obj.Updated, { addSuffix: true });
+        if (dateKey !== currentDateKey) {
+            items.push({ type: 'header', date: dateKey });
+            currentDateKey = dateKey;
+        }
+        items.push({ type: 'manga', manga: m });
+    }
+
+    return items;
+}
 
 interface MangaListItemProps {
     manga: Fuzzysort.KeysResult<MangaGetResponse>;
@@ -164,10 +194,30 @@ function MangaListItem(props: MangaListItemProps) {
 
 interface MangaListProps {
     manga: Fuzzysort.KeysResult<MangaGetResponse>[];
+    groupByDate?: boolean;
     sx?: SxProps<Theme>;
 }
 
 export default function MangaList(props: MangaListProps) {
+    if (props.groupByDate) {
+        const groupedItems = groupMangaByDate(props.manga);
+        return (
+            <Paper sx={props.sx}>
+                <Virtuoso
+                    useWindowScroll
+                    totalCount={groupedItems.length}
+                    itemContent={(i) => {
+                        const item = groupedItems[i];
+                        if (item.type === 'header') {
+                            return <ListSubheader>{item.date}</ListSubheader>;
+                        }
+                        return <MangaListItem manga={item.manga} />;
+                    }}
+                />
+            </Paper>
+        );
+    }
+
     return (
         <Paper sx={props.sx}>
             <Virtuoso

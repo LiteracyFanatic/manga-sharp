@@ -49,6 +49,7 @@ export default function Index() {
             return (
                 <MangaList
                     manga={sortedManga}
+                    groupByDate={sortBy === 'Updated'}
                     sx={{
                         width: '100%'
                     }}
