@@ -11,13 +11,16 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useDebounce } from 'react-use';
+import * as z from 'zod';
 
-import { MangaGetResponse } from '../Api';
+import { mangaGetResponseSchema } from '../Api';
 import { useDrawer } from '../hooks/useDrawer';
 
-export type SortByKey = Extract<keyof MangaGetResponse, 'Title' | 'Updated'>;
+export const sortByKeySchema = mangaGetResponseSchema.pick({ Title: true, Updated: true }).keyof();
+export type SortByKey = z.infer<typeof sortByKeySchema>;
 
-export type SortDirection = 'asc' | 'desc';
+export const sortDirectionSchema = z.enum(['asc', 'desc']);
+export type SortDirection = z.infer<typeof sortDirectionSchema>;
 
 export interface SortBy {
     key: SortByKey;

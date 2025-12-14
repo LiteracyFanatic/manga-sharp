@@ -1,5 +1,6 @@
 import { ErrorOutline } from '@mui/icons-material';
 import { Box, Button, CircularProgress, Container, Typography } from '@mui/material';
+import { parseAsString, useQueryState } from 'nuqs';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useKey } from 'react-use';
@@ -8,13 +9,12 @@ import { ChapterGetResponse, useChapter, useSetBookmark } from '../Api';
 import ReadingPageAppBar from '../components/ReadingPageAppBar';
 import ReadingPageOverlay from '../components/ReadingPageOverlay';
 import ReadingPageStepper from '../components/ReadingPageStepper';
-import { useSearchParam } from '../hooks/useSearchParam';
 
 import LazyImage from './LazyImage';
 
 export default function ReadingPage() {
     const { chapterId } = useParams();
-    const [pageName, setPageName] = useSearchParam('page');
+    const [pageName, setPageName] = useQueryState('page', parseAsString);
     const [innerHeight, setInnerHeight] = useState(window.innerHeight);
     const navigate = useNavigate();
     const setBookmark = useSetBookmark();
@@ -26,7 +26,7 @@ export default function ReadingPage() {
 
     useEffect(() => {
         if (chapter.data?.Direction === 'Horizontal' && !pageName) {
-            setPageName('001');
+            void setPageName('001');
         }
     }, [chapter.data?.Direction, pageName, setPageName]);
 
@@ -54,7 +54,7 @@ export default function ReadingPage() {
 
     function onClickPrevious(chapter: ChapterGetResponse) {
         if (chapter.Direction === 'Horizontal' && currentPageIndex > 0) {
-            setPageName(chapter.Pages[currentPageIndex - 1].Name);
+            void setPageName(chapter.Pages[currentPageIndex - 1].Name);
         }
         else if (chapter.PreviousChapterUrl) {
             navigate(chapter.PreviousChapterUrl);
@@ -63,7 +63,7 @@ export default function ReadingPage() {
 
     function onClickNext(chapter: ChapterGetResponse) {
         if (chapter.Direction === 'Horizontal' && currentPageIndex >= 0 && currentPageIndex < chapter.Pages.length - 1) {
-            setPageName(chapter.Pages[currentPageIndex + 1].Name);
+            void setPageName(chapter.Pages[currentPageIndex + 1].Name);
         }
         else if (chapter.NextChapterUrl) {
             navigate(chapter.NextChapterUrl);
@@ -72,7 +72,7 @@ export default function ReadingPage() {
 
     function onChangeStep(page: number) {
         if (chapter.data) {
-            setPageName(chapter.data.Pages[page].Name);
+            void setPageName(chapter.data.Pages[page].Name);
         }
     }
 
@@ -98,7 +98,7 @@ export default function ReadingPage() {
         if (chapter.data) {
             const selectedPage = chapter.data.Pages.find(page => page.Id === e.target.value);
             if (selectedPage) {
-                setPageName(selectedPage.Name);
+                void setPageName(selectedPage.Name);
             }
         }
     }

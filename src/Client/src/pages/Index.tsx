@@ -1,18 +1,12 @@
 import { Add } from '@mui/icons-material';
 import { CircularProgress, Container, Fab, Toolbar, Typography } from '@mui/material';
 import fuzzysort from 'fuzzysort';
+import { parseAsString, parseAsStringEnum, useQueryState } from 'nuqs';
 import { useState } from 'react';
-import {
-    QueryParamConfig,
-    StringParam,
-    createEnumParam,
-    useQueryParam,
-    withDefault
-} from 'use-query-params';
 
 import { MangaGetResponse, useManga } from '../Api';
 import { AddMangaModal } from '../components/AddMangaModal';
-import IndexAppBar, { SortByKey, SortDirection } from '../components/IndexAppBar';
+import IndexAppBar, { SortByKey, sortByKeySchema, sortDirectionSchema } from '../components/IndexAppBar';
 
 import MangaList from './MangaList';
 
@@ -27,15 +21,15 @@ function compare(sortBy: SortByKey, a: MangaGetResponse, b: MangaGetResponse) {
     }
 }
 
-const sortByKeyParam = withDefault(createEnumParam<SortByKey>(['Title', 'Updated']), 'Title') as QueryParamConfig<SortByKey>;
-const sortDirectionParam = withDefault(createEnumParam<SortDirection>(['asc', 'desc']), 'asc') as QueryParamConfig<SortDirection>;
+const sortByKeyParser = parseAsStringEnum(sortByKeySchema.options).withDefault('Title');
+const sortDirectionParser = parseAsStringEnum(sortDirectionSchema.options).withDefault('asc');
 
 export default function Index() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const manga = useManga();
-    const [search, setSearch] = useQueryParam('search', StringParam);
-    const [sortBy, setSortBy] = useQueryParam('sort_by', sortByKeyParam);
-    const [sortDirection, setSortDirection] = useQueryParam('sort_direction', sortDirectionParam);
+    const [search, setSearch] = useQueryState('search', parseAsString);
+    const [sortBy, setSortBy] = useQueryState('sort_by', sortByKeyParser);
+    const [sortDirection, setSortDirection] = useQueryState('sort_direction', sortDirectionParser);
 
     function getContent() {
         if (manga.data) {
@@ -68,11 +62,11 @@ export default function Index() {
         <>
             <IndexAppBar
                 defaultSearchValue={search || ''}
-                onSearchValueChange={v => setSearch(v || null)}
+                onSearchValueChange={v => void setSearch(v || null)}
                 defaultSortBy={{ key: sortBy, direction: sortDirection }}
                 onSortByChange={(v) => {
-                    setSortBy(v.key);
-                    setSortDirection(v.direction);
+                    void setSortBy(v.key);
+                    void setSortDirection(v.direction);
                 }}
             />
             <Toolbar />

@@ -9,7 +9,7 @@ type UnwrapSWRHook<T> = T extends (...args: infer _A) => infer R ? UnwrapSWR<R> 
 const directionSchema = z.enum(['Horizontal', 'Vertical']);
 export type Direction = z.infer<typeof directionSchema>;
 
-const mangaGetResponseSchema = z.object({
+export const mangaGetResponseSchema = z.object({
     Id: z.string(),
     Title: z.string(),
     BookmarkUrl: z.string(),

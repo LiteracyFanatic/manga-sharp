@@ -8,10 +8,9 @@ import CssBaseLine from '@mui/material/CssBaseline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ConfirmProvider } from 'material-ui-confirm';
 import { SnackbarProvider } from 'notistack';
+import { NuqsAdapter } from 'nuqs/adapters/react-router';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
-import { QueryParamProvider } from 'use-query-params';
-import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6';
 import AppDrawer from './components/AppDrawer';
 import { DrawerProvider } from './hooks/useDrawer';
 import DownloadsPage from './pages/DownloadsPage';
@@ -43,7 +42,7 @@ function App() {
     return (
         <ConfirmProvider>
             <BrowserRouter>
-                <QueryParamProvider adapter={ReactRouter6Adapter}>
+                <NuqsAdapter>
                     <DrawerProvider>
                         <SnackbarProvider
                             maxSnack={3}
@@ -58,7 +57,7 @@ function App() {
                             </Box>
                         </SnackbarProvider>
                     </DrawerProvider>
-                </QueryParamProvider>
+                </NuqsAdapter>
             </BrowserRouter>
         </ConfirmProvider>
     );
