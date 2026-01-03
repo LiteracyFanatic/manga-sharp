@@ -16,7 +16,7 @@ type DownloadManager(logger: ILogger<DownloadManager>, jobRepository: DownloadJo
 
     member _.QueueDownload(url: string, direction: Direction) =
         task {
-            let! job = jobRepository.EnqueueAddMangaAsync(url)
+            let! job = jobRepository.EnqueueAddMangaAsync(url, direction)
             return job.Id
         }
 
@@ -148,7 +148,7 @@ type DownloadWorker(scopeFactory: IServiceScopeFactory, logger: ILogger<Download
 
                     let! result =
                         match job.Type with
-                        | JobType.AddManga -> downloader.Download(job.Url, Direction.Vertical, progress)
+                        | JobType.AddManga -> downloader.Download(job.Url, job.Direction.GetValueOrDefault(Direction.Vertical), progress)
                         | JobType.UpdateManga ->
                             let mangaId = job.MangaId.GetValueOrDefault()
                             if mangaId = Guid.Empty then

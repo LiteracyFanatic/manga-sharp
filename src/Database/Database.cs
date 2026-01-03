@@ -124,6 +124,7 @@ public class DownloadJob : IEntityTypeConfiguration<DownloadJob>
     public Guid? MangaId { get; set; }
     public Manga? Manga { get; set; }
     public string? Title { get; set; }
+    public Direction? Direction { get; set; }
     public string? Error { get; set; }
     public string? ProgressChapterTitle { get; set; }
     public int? ProgressChapterIndex { get; set; }
@@ -139,6 +140,7 @@ public class DownloadJob : IEntityTypeConfiguration<DownloadJob>
     {
         builder.Property(e => e.Type).HasConversion(new EnumToStringConverter<JobType>()).HasMaxLength(20);
         builder.Property(e => e.Status).HasConversion(new EnumToStringConverter<JobStatus>()).HasMaxLength(20);
+        builder.Property(e => e.Direction).HasConversion(new EnumToStringConverter<Direction>()).HasMaxLength(10);
         builder.Property(e => e.Url).HasMaxLength(200);
         builder.Property(e => e.Title).HasMaxLength(1000);
         builder.Property(e => e.Error).HasMaxLength(2000);

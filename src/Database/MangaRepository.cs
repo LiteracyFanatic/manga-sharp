@@ -37,7 +37,7 @@ public class MangaRepository(MangaContext db)
 
 public class DownloadJobRepository(MangaContext db)
 {
-    public async Task<DownloadJob> EnqueueAddMangaAsync(string url)
+    public async Task<DownloadJob> EnqueueAddMangaAsync(string url, Direction direction)
     {
         var minOrder = await db.DownloadJobs.MinAsync(j => (double?)j.OrderIndex) ?? 0;
         var job = new DownloadJob
@@ -46,6 +46,7 @@ public class DownloadJobRepository(MangaContext db)
             Type = JobType.AddManga,
             Status = JobStatus.Pending,
             Url = url,
+            Direction = direction,
             CreatedAt = DateTime.UtcNow,
             OrderIndex = minOrder - 1
         };
